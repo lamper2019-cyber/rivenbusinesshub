@@ -1,6 +1,8 @@
 import { NextRequest, NextResponse } from "next/server";
 import { appendRow } from "@/lib/sheets";
 
+export const dynamic = "force-dynamic";
+
 const HEADERS = [
   "Full Name",
   "Email",
