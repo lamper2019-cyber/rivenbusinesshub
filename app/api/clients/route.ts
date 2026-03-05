@@ -5,7 +5,7 @@ export async function GET() {
   try {
     const rows = await getRows("Clients");
     if (rows.length === 0) {
-      return NextResponse.json({ clients: [] });
+      return NextResponse.json({ clients: [], debug: { rowCount: 0, message: "No rows found in Clients tab" } });
     }
     const headers = rows[0];
     const clients = rows.slice(1).map((row) => {
@@ -15,9 +15,9 @@ export async function GET() {
       });
       return obj;
     });
-    return NextResponse.json({ clients });
+    return NextResponse.json({ clients, debug: { rowCount: rows.length, headers } });
   } catch (err: unknown) {
     const message = err instanceof Error ? err.message : "Unknown error";
-    return NextResponse.json({ error: message }, { status: 500 });
+    return NextResponse.json({ error: message, debug: { hint: "Check if Clients tab exists with exact name" } }, { status: 500 });
   }
 }
