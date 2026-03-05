@@ -68,19 +68,20 @@ export default function ClientDashboard() {
         <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6">
           {filtered.map((client, idx) => {
             const name = client["Name"] || "Unknown";
-            const phase = client["Phase"] || "—";
+            const phase = client["Phase (1/2/3)"] || client["Phase"] || "—";
             const startWeight = parseFloat(client["Starting Weight"] || "0");
             const currentWeight = parseFloat(
               client["Current Weight"] || "0"
             );
-            const poundsLost = startWeight - currentWeight;
+            const sheetPoundsLost = parseFloat(client["Pounds Lost"] || "0");
+            const poundsLost = sheetPoundsLost > 0 ? sheetPoundsLost : startWeight - currentWeight;
             const goal = 20;
             const progress = Math.min(
               Math.max((poundsLost / goal) * 100, 0),
               100
             );
-            const lastCheckIn = client["Last Check-In Date"] || "—";
-            const nextAdjustment = client["Next Adjustment Date"] || "—";
+            const lastCheckIn = client["Last Check-In"] || client["Last Check-In Date"] || "—";
+            const nextAdjustment = client["Next Adjustment"] || client["Next Adjustment Date"] || "—";
             const status = client["Status"] || "Active";
 
             const statusColor =
