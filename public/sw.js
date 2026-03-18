@@ -1,5 +1,5 @@
-const CACHE_NAME = "riven-hub-v1";
-const STATIC_ASSETS = ["/leads", "/clients", "/checkin", "/onboarding"];
+const CACHE_NAME = "riven-crm-v2";
+const STATIC_ASSETS = ["/clients", "/leads", "/checkins"];
 
 self.addEventListener("install", (event) => {
   event.waitUntil(

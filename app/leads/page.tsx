@@ -1,312 +1,243 @@
 "use client";
 
 import { useState, useEffect, useCallback } from "react";
+import { v4 as uuid } from "uuid";
+import type { Lead } from "@/lib/types";
+import { getAllLeads, putLead, deleteLead } from "@/lib/db";
+import LeadCard from "@/components/LeadCard";
 
-interface Lead {
-  _row: string;
-  [key: string]: string;
-}
+const emptyLead = (): Lead => ({
+  id: uuid(),
+  name: "",
+  status: "new",
+  followUpDate: "",
+  notes: "",
+  source: "",
+  email: "",
+  phone: "",
+  createdAt: new Date().toISOString(),
+  updatedAt: new Date().toISOString(),
+  syncedAt: "",
+});
 
-const COLUMNS = [
-  "Name",
-  "Email",
-  "Phone",
-  "Date",
-  "Source",
-  "Lead Score",
-  "Call Scheduled",
-  "Call Date",
-  "Call Outcome",
-  "Follow-up Date",
-  "Notes",
-];
-
-const OUTCOME_OPTIONS = [
-  "All",
-  "No Answer",
-  "Booked",
-  "Not Interested",
-  "Follow Up",
-  "Closed",
-];
-
-export default function LeadTracker() {
+export default function LeadsPage() {
   const [leads, setLeads] = useState<Lead[]>([]);
+  const [filter, setFilter] = useState<string>("all");
+  const [showAdd, setShowAdd] = useState(false);
+  const [editingLead, setEditingLead] = useState<Lead | null>(null);
+  const [form, setForm] = useState<Lead>(emptyLead());
   const [loading, setLoading] = useState(true);
-  const [sortAsc, setSortAsc] = useState(false);
-  const [outcomeFilter, setOutcomeFilter] = useState("All");
-  const [showAddForm, setShowAddForm] = useState(false);
-  const [newLead, setNewLead] = useState<Record<string, string>>({});
-  const [editingCell, setEditingCell] = useState<{
-    row: string;
-    col: string;
-  } | null>(null);
-  const [editValue, setEditValue] = useState("");
-  const [saving, setSaving] = useState(false);
 
-  const fetchLeads = useCallback(async () => {
-    try {
-      const res = await fetch("/api/leads");
-      const data = await res.json();
-      setLeads(data.leads || []);
-    } catch {
-      console.error("Failed to fetch leads");
-    } finally {
-      setLoading(false);
-    }
+  const load = useCallback(async () => {
+    const data = await getAllLeads();
+    setLeads(data);
+    setLoading(false);
   }, []);
 
   useEffect(() => {
-    fetchLeads();
-  }, [fetchLeads]);
+    load();
+  }, [load]);
 
-  const handleAddLead = async () => {
-    if (!newLead.Name) return;
-    setSaving(true);
-    const payload = { ...newLead };
-    if (!payload.Date) {
-      payload.Date = new Date().toLocaleDateString("en-US");
-    }
-    await fetch("/api/leads", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(payload),
-    });
-    setNewLead({});
-    setShowAddForm(false);
-    setSaving(false);
-    fetchLeads();
-  };
+  const filtered = leads.filter((l) => {
+    if (filter !== "all" && l.status !== filter) return false;
+    return true;
+  });
 
-  const handleInlineEdit = async (
-    rowNum: string,
-    colName: string,
-    value: string
-  ) => {
-    const colIdx = COLUMNS.indexOf(colName);
-    if (colIdx === -1) return;
-    setSaving(true);
-    await fetch("/api/leads", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        action: "update",
-        row: parseInt(rowNum),
-        col: colIdx,
-        value,
-      }),
-    });
-    setEditingCell(null);
-    setSaving(false);
-    fetchLeads();
-  };
+  function openEdit(lead: Lead) {
+    setEditingLead(lead);
+    setForm({ ...lead });
+    setShowAdd(true);
+  }
 
-  let filtered = [...leads];
-  if (outcomeFilter !== "All") {
-    filtered = filtered.filter(
-      (l) => l["Call Outcome"] === outcomeFilter
+  async function handleSave(e: React.FormEvent) {
+    e.preventDefault();
+    if (!form.name.trim()) return;
+    await putLead(form);
+    setForm(emptyLead());
+    setShowAdd(false);
+    setEditingLead(null);
+    await load();
+  }
+
+  async function handleDeleteLead() {
+    if (!editingLead) return;
+    if (!confirm("Delete this lead?")) return;
+    await deleteLead(editingLead.id);
+    setEditingLead(null);
+    setShowAdd(false);
+    setForm(emptyLead());
+    await load();
+  }
+
+  function handleCancel() {
+    setShowAdd(false);
+    setEditingLead(null);
+    setForm(emptyLead());
+  }
+
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center h-64">
+        <div className="text-riven-muted">Loading leads...</div>
+      </div>
     );
   }
 
-  filtered.sort((a, b) => {
-    const scoreA = parseInt(a["Lead Score"] || "0");
-    const scoreB = parseInt(b["Lead Score"] || "0");
-    return sortAsc ? scoreA - scoreB : scoreB - scoreA;
-  });
-
   return (
     <div>
-      <div className="flex items-center justify-between mb-6">
-        <div>
-          <h2 className="text-2xl font-bold">Lead Tracker</h2>
-          <p className="text-riven-muted text-sm mt-1">
-            {leads.length} total leads
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-6">
+        <h1 className="text-2xl font-bold">
+          <span className="text-riven-gold">Leads</span>{" "}
+          <span className="text-riven-muted text-base font-normal">
+            ({filtered.length})
+          </span>
+        </h1>
+        <button
+          onClick={() => {
+            if (showAdd) {
+              handleCancel();
+            } else {
+              setForm(emptyLead());
+              setEditingLead(null);
+              setShowAdd(true);
+            }
+          }}
+          className="px-4 py-2 bg-riven-gold text-black text-sm font-semibold rounded-lg hover:bg-riven-gold-light transition-colors"
+        >
+          {showAdd ? "Cancel" : "+ Add Lead"}
+        </button>
+      </div>
+
+      {showAdd && (
+        <form
+          onSubmit={handleSave}
+          className="bg-riven-card border border-riven-border rounded-xl p-4 mb-6 animate-slide-up"
+        >
+          <div className="flex items-center justify-between mb-3">
+            <h3 className="text-sm font-semibold text-white">
+              {editingLead ? "Edit Lead" : "New Lead"}
+            </h3>
+            {editingLead && (
+              <button
+                type="button"
+                onClick={handleDeleteLead}
+                className="text-xs text-red-400 hover:text-red-300"
+              >
+                Delete
+              </button>
+            )}
+          </div>
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
+            <input
+              placeholder="Name *"
+              value={form.name}
+              onChange={(e) => setForm({ ...form, name: e.target.value })}
+              className="bg-riven-bg border border-riven-border rounded-lg px-3 py-2 text-sm text-white placeholder-riven-muted focus:border-riven-gold outline-none"
+              required
+            />
+            <select
+              value={form.status}
+              onChange={(e) =>
+                setForm({ ...form, status: e.target.value as Lead["status"] })
+              }
+              className="bg-riven-bg border border-riven-border rounded-lg px-3 py-2 text-sm text-white focus:border-riven-gold outline-none"
+            >
+              <option value="new">New</option>
+              <option value="contacted">Contacted</option>
+              <option value="interested">Interested</option>
+              <option value="follow-up">Follow-up</option>
+              <option value="closed">Closed</option>
+              <option value="lost">Lost</option>
+            </select>
+            <select
+              value={form.source}
+              onChange={(e) =>
+                setForm({ ...form, source: e.target.value as Lead["source"] })
+              }
+              className="bg-riven-bg border border-riven-border rounded-lg px-3 py-2 text-sm text-white focus:border-riven-gold outline-none"
+            >
+              <option value="">Source</option>
+              <option value="referral">Referral</option>
+              <option value="instagram">Instagram</option>
+              <option value="facebook">Facebook</option>
+              <option value="website">Website</option>
+              <option value="other">Other</option>
+            </select>
+            <input
+              type="email"
+              placeholder="Email"
+              value={form.email}
+              onChange={(e) => setForm({ ...form, email: e.target.value })}
+              className="bg-riven-bg border border-riven-border rounded-lg px-3 py-2 text-sm text-white placeholder-riven-muted focus:border-riven-gold outline-none"
+            />
+            <input
+              type="tel"
+              placeholder="Phone"
+              value={form.phone}
+              onChange={(e) => setForm({ ...form, phone: e.target.value })}
+              className="bg-riven-bg border border-riven-border rounded-lg px-3 py-2 text-sm text-white placeholder-riven-muted focus:border-riven-gold outline-none"
+            />
+            <input
+              type="date"
+              placeholder="Follow-up Date"
+              value={form.followUpDate}
+              onChange={(e) =>
+                setForm({ ...form, followUpDate: e.target.value })
+              }
+              className="bg-riven-bg border border-riven-border rounded-lg px-3 py-2 text-sm text-white focus:border-riven-gold outline-none"
+            />
+            <div className="sm:col-span-2 lg:col-span-3">
+              <textarea
+                placeholder="Notes"
+                value={form.notes}
+                onChange={(e) => setForm({ ...form, notes: e.target.value })}
+                rows={2}
+                className="w-full bg-riven-bg border border-riven-border rounded-lg px-3 py-2 text-sm text-white placeholder-riven-muted focus:border-riven-gold outline-none resize-none"
+              />
+            </div>
+          </div>
+          <button
+            type="submit"
+            className="mt-3 px-6 py-2 bg-riven-gold text-black text-sm font-semibold rounded-lg hover:bg-riven-gold-light transition-colors"
+          >
+            {editingLead ? "Update Lead" : "Save Lead"}
+          </button>
+        </form>
+      )}
+
+      <div className="flex flex-wrap gap-1 mb-4">
+        {["all", "new", "contacted", "interested", "follow-up", "closed", "lost"].map(
+          (s) => (
+            <button
+              key={s}
+              onClick={() => setFilter(s)}
+              className={`px-3 py-1.5 text-xs rounded-lg capitalize transition-colors ${
+                filter === s
+                  ? "bg-riven-gold text-black font-semibold"
+                  : "bg-riven-card text-riven-muted border border-riven-border hover:text-white"
+              }`}
+            >
+              {s}
+            </button>
+          )
+        )}
+      </div>
+
+      {filtered.length === 0 ? (
+        <div className="text-center py-16 text-riven-muted">
+          <p className="text-lg mb-2">No leads yet</p>
+          <p className="text-sm">
+            Add your first lead or use the mic button to say &quot;Add a lead
+            named...&quot;
           </p>
         </div>
-        <button
-          onClick={() => setShowAddForm(!showAddForm)}
-          className="px-4 py-2 bg-riven-gold text-black font-semibold rounded-lg hover:bg-riven-gold-light transition"
-        >
-          + Add Lead
-        </button>
-      </div>
-
-      {showAddForm && (
-        <div className="bg-riven-card border border-riven-border rounded-lg p-6 mb-6">
-          <h3 className="text-lg font-semibold mb-4 text-riven-gold">
-            New Lead
-          </h3>
-          <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
-            {COLUMNS.map((col) => (
-              <div key={col}>
-                <label className="block text-xs text-riven-muted mb-1">
-                  {col}
-                </label>
-                <input
-                  type={col === "Lead Score" ? "number" : "text"}
-                  value={newLead[col] || ""}
-                  onChange={(e) =>
-                    setNewLead({ ...newLead, [col]: e.target.value })
-                  }
-                  className="w-full bg-riven-bg border border-riven-border rounded px-3 py-2 text-sm text-white focus:border-riven-gold focus:outline-none"
-                  placeholder={col}
-                />
-              </div>
-            ))}
-          </div>
-          <div className="flex gap-3 mt-4">
-            <button
-              onClick={handleAddLead}
-              disabled={saving || !newLead.Name}
-              className="px-4 py-2 bg-riven-gold text-black font-semibold rounded-lg hover:bg-riven-gold-light transition disabled:opacity-50"
-            >
-              {saving ? "Saving..." : "Save Lead"}
-            </button>
-            <button
-              onClick={() => {
-                setShowAddForm(false);
-                setNewLead({});
-              }}
-              className="px-4 py-2 border border-riven-border rounded-lg text-riven-muted hover:text-white transition"
-            >
-              Cancel
-            </button>
-          </div>
-        </div>
-      )}
-
-      <div className="flex items-center gap-4 mb-4">
-        <div className="flex items-center gap-2">
-          <label className="text-sm text-riven-muted">Filter by Outcome:</label>
-          <select
-            value={outcomeFilter}
-            onChange={(e) => setOutcomeFilter(e.target.value)}
-            className="bg-riven-card border border-riven-border rounded px-3 py-1.5 text-sm text-white focus:border-riven-gold focus:outline-none"
-          >
-            {OUTCOME_OPTIONS.map((o) => (
-              <option key={o} value={o}>
-                {o}
-              </option>
-            ))}
-          </select>
-        </div>
-        <button
-          onClick={() => setSortAsc(!sortAsc)}
-          className="text-sm text-riven-muted hover:text-riven-gold transition flex items-center gap-1"
-        >
-          Lead Score {sortAsc ? "↑" : "↓"}
-        </button>
-      </div>
-
-      {loading ? (
-        <div className="text-center py-20 text-riven-muted">
-          Loading leads...
-        </div>
       ) : (
-        <div className="overflow-x-auto rounded-lg border border-riven-border">
-          <table className="w-full text-sm">
-            <thead>
-              <tr className="bg-riven-card border-b border-riven-border">
-                {COLUMNS.map((col) => (
-                  <th
-                    key={col}
-                    className="text-left px-4 py-3 text-riven-muted font-medium whitespace-nowrap"
-                  >
-                    {col}
-                  </th>
-                ))}
-              </tr>
-            </thead>
-            <tbody>
-              {filtered.map((lead) => {
-                const score = parseInt(lead["Lead Score"] || "0");
-                const isHot = score >= 3;
-                return (
-                  <tr
-                    key={lead._row}
-                    className={`border-b border-riven-border hover:bg-white/5 transition ${
-                      isHot ? "bg-riven-gold/5" : ""
-                    }`}
-                  >
-                    {COLUMNS.map((col, colIdx) => {
-                      const isEditing =
-                        editingCell?.row === lead._row &&
-                        editingCell?.col === col;
-                      return (
-                        <td
-                          key={col}
-                          className={`px-4 py-3 whitespace-nowrap cursor-pointer ${
-                            col === "Lead Score" && isHot
-                              ? "text-riven-gold font-bold"
-                              : ""
-                          }`}
-                          onDoubleClick={() => {
-                            setEditingCell({ row: lead._row, col });
-                            setEditValue(lead[col] || "");
-                          }}
-                        >
-                          {isEditing ? (
-                            <input
-                              autoFocus
-                              value={editValue}
-                              onChange={(e) => setEditValue(e.target.value)}
-                              onBlur={() =>
-                                handleInlineEdit(
-                                  lead._row,
-                                  col,
-                                  editValue
-                                )
-                              }
-                              onKeyDown={(e) => {
-                                if (e.key === "Enter") {
-                                  handleInlineEdit(
-                                    lead._row,
-                                    col,
-                                    editValue
-                                  );
-                                }
-                                if (e.key === "Escape") {
-                                  setEditingCell(null);
-                                }
-                              }}
-                              className="bg-riven-bg border border-riven-gold rounded px-2 py-1 text-sm text-white focus:outline-none w-full min-w-[80px]"
-                            />
-                          ) : (
-                            <span
-                              className={
-                                col === "Name" && isHot
-                                  ? "text-riven-gold"
-                                  : ""
-                              }
-                            >
-                              {lead[col] || "—"}
-                            </span>
-                          )}
-                        </td>
-                      );
-                    })}
-                  </tr>
-                );
-              })}
-              {filtered.length === 0 && (
-                <tr>
-                  <td
-                    colSpan={COLUMNS.length}
-                    className="text-center py-10 text-riven-muted"
-                  >
-                    No leads found
-                  </td>
-                </tr>
-              )}
-            </tbody>
-          </table>
+        <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
+          {filtered.map((lead) => (
+            <LeadCard key={lead.id} lead={lead} onEdit={openEdit} />
+          ))}
         </div>
       )}
-
-      <p className="text-xs text-riven-muted mt-4">
-        Double-click any cell to edit inline. Leads with score 3+ are highlighted
-        gold.
-      </p>
     </div>
   );
 }

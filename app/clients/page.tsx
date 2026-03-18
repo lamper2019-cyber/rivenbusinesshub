@@ -1,53 +1,179 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
+import { v4 as uuid } from "uuid";
+import type { Client, TendencyType } from "@/lib/types";
+import { getAllClients, putClient } from "@/lib/db";
+import ClientCard from "@/components/ClientCard";
 
-interface Client {
-  [key: string]: string;
-}
+const emptyClient = (): Client => ({
+  id: uuid(),
+  name: "",
+  phase: 1,
+  startDate: new Date().toISOString().split("T")[0],
+  startingWeight: 0,
+  currentWeight: 0,
+  totalLost: 0,
+  tendencyType: "",
+  lastCheckInDate: "",
+  status: "active",
+  notes: "",
+  createdAt: new Date().toISOString(),
+  updatedAt: new Date().toISOString(),
+  syncedAt: "",
+});
 
-const STATUS_FILTERS = ["All", "Active", "Paused", "Completed"];
-
-export default function ClientDashboard() {
+export default function ClientsPage() {
   const [clients, setClients] = useState<Client[]>([]);
+  const [filter, setFilter] = useState<string>("all");
+  const [search, setSearch] = useState("");
+  const [showAdd, setShowAdd] = useState(false);
+  const [form, setForm] = useState<Client>(emptyClient());
   const [loading, setLoading] = useState(true);
-  const [statusFilter, setStatusFilter] = useState("All");
 
-  useEffect(() => {
-    fetch("/api/clients")
-      .then((res) => res.json())
-      .then((data) => setClients(data.clients || []))
-      .catch(() => console.error("Failed to fetch clients"))
-      .finally(() => setLoading(false));
+  const load = useCallback(async () => {
+    const data = await getAllClients();
+    setClients(data);
+    setLoading(false);
   }, []);
 
-  const filtered =
-    statusFilter === "All"
-      ? clients
-      : clients.filter(
-          (c) =>
-            (c["Status"] || "Active").toLowerCase() ===
-            statusFilter.toLowerCase()
-        );
+  useEffect(() => {
+    load();
+  }, [load]);
+
+  const filtered = clients.filter((c) => {
+    if (filter !== "all" && c.status !== filter) return false;
+    if (search && !c.name.toLowerCase().includes(search.toLowerCase()))
+      return false;
+    return true;
+  });
+
+  async function handleAdd(e: React.FormEvent) {
+    e.preventDefault();
+    if (!form.name.trim()) return;
+    form.currentWeight = form.currentWeight || form.startingWeight;
+    form.totalLost = form.startingWeight - form.currentWeight;
+    await putClient(form);
+    setForm(emptyClient());
+    setShowAdd(false);
+    await load();
+  }
+
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center h-64">
+        <div className="text-riven-muted">Loading clients...</div>
+      </div>
+    );
+  }
 
   return (
     <div>
-      <div className="flex items-center justify-between mb-6">
-        <div>
-          <h2 className="text-2xl font-bold">Client Dashboard</h2>
-          <p className="text-riven-muted text-sm mt-1">
-            {clients.length} total clients
-          </p>
-        </div>
-        <div className="flex gap-2">
-          {STATUS_FILTERS.map((s) => (
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-6">
+        <h1 className="text-2xl font-bold">
+          <span className="text-riven-gold">Clients</span>{" "}
+          <span className="text-riven-muted text-base font-normal">
+            ({filtered.length})
+          </span>
+        </h1>
+        <button
+          onClick={() => setShowAdd(!showAdd)}
+          className="px-4 py-2 bg-riven-gold text-black text-sm font-semibold rounded-lg hover:bg-riven-gold-light transition-colors"
+        >
+          {showAdd ? "Cancel" : "+ Add Client"}
+        </button>
+      </div>
+
+      {showAdd && (
+        <form
+          onSubmit={handleAdd}
+          className="bg-riven-card border border-riven-border rounded-xl p-4 mb-6 animate-slide-up"
+        >
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
+            <input
+              placeholder="Name *"
+              value={form.name}
+              onChange={(e) => setForm({ ...form, name: e.target.value })}
+              className="bg-riven-bg border border-riven-border rounded-lg px-3 py-2 text-sm text-white placeholder-riven-muted focus:border-riven-gold outline-none"
+              required
+            />
+            <select
+              value={form.phase}
+              onChange={(e) =>
+                setForm({ ...form, phase: Number(e.target.value) as 1 | 2 | 3 })
+              }
+              className="bg-riven-bg border border-riven-border rounded-lg px-3 py-2 text-sm text-white focus:border-riven-gold outline-none"
+            >
+              <option value={1}>Phase 1</option>
+              <option value={2}>Phase 2</option>
+              <option value={3}>Phase 3</option>
+            </select>
+            <input
+              type="number"
+              placeholder="Starting Weight"
+              value={form.startingWeight || ""}
+              onChange={(e) =>
+                setForm({ ...form, startingWeight: Number(e.target.value) })
+              }
+              className="bg-riven-bg border border-riven-border rounded-lg px-3 py-2 text-sm text-white placeholder-riven-muted focus:border-riven-gold outline-none"
+            />
+            <input
+              type="number"
+              placeholder="Current Weight"
+              value={form.currentWeight || ""}
+              onChange={(e) =>
+                setForm({ ...form, currentWeight: Number(e.target.value) })
+              }
+              className="bg-riven-bg border border-riven-border rounded-lg px-3 py-2 text-sm text-white placeholder-riven-muted focus:border-riven-gold outline-none"
+            />
+            <select
+              value={form.tendencyType}
+              onChange={(e) =>
+                setForm({
+                  ...form,
+                  tendencyType: e.target.value as TendencyType | "",
+                })
+              }
+              className="bg-riven-bg border border-riven-border rounded-lg px-3 py-2 text-sm text-white focus:border-riven-gold outline-none"
+            >
+              <option value="">Tendency Type</option>
+              <option value="Obliger">Obliger</option>
+              <option value="Upholder">Upholder</option>
+              <option value="Questioner">Questioner</option>
+              <option value="Rebel">Rebel</option>
+            </select>
+            <input
+              type="date"
+              value={form.startDate}
+              onChange={(e) => setForm({ ...form, startDate: e.target.value })}
+              className="bg-riven-bg border border-riven-border rounded-lg px-3 py-2 text-sm text-white focus:border-riven-gold outline-none"
+            />
+          </div>
+          <button
+            type="submit"
+            className="mt-3 px-6 py-2 bg-riven-gold text-black text-sm font-semibold rounded-lg hover:bg-riven-gold-light transition-colors"
+          >
+            Save Client
+          </button>
+        </form>
+      )}
+
+      <div className="flex flex-col sm:flex-row gap-3 mb-4">
+        <input
+          placeholder="Search clients..."
+          value={search}
+          onChange={(e) => setSearch(e.target.value)}
+          className="flex-1 bg-riven-card border border-riven-border rounded-lg px-3 py-2 text-sm text-white placeholder-riven-muted focus:border-riven-gold outline-none"
+        />
+        <div className="flex gap-1">
+          {["all", "active", "paused", "completed"].map((s) => (
             <button
               key={s}
-              onClick={() => setStatusFilter(s)}
-              className={`px-3 py-1.5 text-sm rounded-lg transition ${
-                statusFilter === s
+              onClick={() => setFilter(s)}
+              className={`px-3 py-1.5 text-xs rounded-lg capitalize transition-colors ${
+                filter === s
                   ? "bg-riven-gold text-black font-semibold"
-                  : "bg-riven-card border border-riven-border text-riven-muted hover:text-white"
+                  : "bg-riven-card text-riven-muted border border-riven-border hover:text-white"
               }`}
             >
               {s}
@@ -56,99 +182,19 @@ export default function ClientDashboard() {
         </div>
       </div>
 
-      {loading ? (
-        <div className="text-center py-20 text-riven-muted">
-          Loading clients...
-        </div>
-      ) : filtered.length === 0 ? (
-        <div className="text-center py-20 text-riven-muted">
-          No clients found
+      {filtered.length === 0 ? (
+        <div className="text-center py-16 text-riven-muted">
+          <p className="text-lg mb-2">No clients yet</p>
+          <p className="text-sm">
+            Add your first client or use the mic button to say &quot;Add a
+            client named...&quot;
+          </p>
         </div>
       ) : (
-        <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6">
-          {filtered.map((client, idx) => {
-            const name = client["Name"] || "Unknown";
-            const phase = client["Phase (1/2/3)"] || client["Phase"] || "—";
-            const startWeight = parseFloat(client["Starting Weight"] || "0");
-            const currentWeight = parseFloat(
-              client["Current Weight"] || "0"
-            );
-            const sheetPoundsLost = parseFloat(client["Pounds Lost"] || "0");
-            const poundsLost = sheetPoundsLost > 0 ? sheetPoundsLost : startWeight - currentWeight;
-            const goal = 20;
-            const progress = Math.min(
-              Math.max((poundsLost / goal) * 100, 0),
-              100
-            );
-            const lastCheckIn = client["Last Check-In"] || client["Last Check-In Date"] || "—";
-            const nextAdjustment = client["Next Adjustment"] || client["Next Adjustment Date"] || "—";
-            const status = client["Status"] || "Active";
-
-            const statusColor =
-              status.toLowerCase() === "active"
-                ? "text-green-400"
-                : status.toLowerCase() === "paused"
-                ? "text-yellow-400"
-                : "text-riven-muted";
-
-            return (
-              <div
-                key={idx}
-                className="bg-riven-card border border-riven-border rounded-xl p-6 hover:border-riven-gold/30 transition"
-              >
-                <div className="flex items-start justify-between mb-4">
-                  <div>
-                    <h3 className="text-lg font-semibold">{name}</h3>
-                    <p className="text-sm text-riven-muted">Phase: {phase}</p>
-                  </div>
-                  <span
-                    className={`text-xs font-medium px-2 py-1 rounded ${statusColor} bg-white/5`}
-                  >
-                    {status}
-                  </span>
-                </div>
-
-                <div className="grid grid-cols-3 gap-3 mb-4">
-                  <div className="text-center">
-                    <p className="text-xs text-riven-muted">Start</p>
-                    <p className="text-lg font-bold">
-                      {startWeight > 0 ? `${startWeight}` : "—"}
-                    </p>
-                  </div>
-                  <div className="text-center">
-                    <p className="text-xs text-riven-muted">Current</p>
-                    <p className="text-lg font-bold">
-                      {currentWeight > 0 ? `${currentWeight}` : "—"}
-                    </p>
-                  </div>
-                  <div className="text-center">
-                    <p className="text-xs text-riven-muted">Lost</p>
-                    <p className="text-lg font-bold text-riven-gold">
-                      {poundsLost > 0 ? `${poundsLost.toFixed(1)}` : "0"}
-                    </p>
-                  </div>
-                </div>
-
-                <div className="mb-4">
-                  <div className="flex justify-between text-xs text-riven-muted mb-1">
-                    <span>Progress toward 20 lb goal</span>
-                    <span>{progress.toFixed(0)}%</span>
-                  </div>
-                  <div className="w-full bg-riven-border rounded-full h-2.5">
-                    <div
-                      className="bg-riven-gold h-2.5 rounded-full transition-all duration-500"
-                      style={{ width: `${progress}%` }}
-                    />
-                  </div>
-                </div>
-
-                <div className="flex justify-between text-xs text-riven-muted border-t border-riven-border pt-3">
-                  <span>Last check-in: {lastCheckIn}</span>
-                  <span>Next adj: {nextAdjustment}</span>
-                </div>
-              </div>
-            );
-          })}
+        <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
+          {filtered.map((client) => (
+            <ClientCard key={client.id} client={client} />
+          ))}
         </div>
       )}
     </div>

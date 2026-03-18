@@ -4,13 +4,13 @@ import LayoutShell from "@/components/LayoutShell";
 import ServiceWorker from "@/components/ServiceWorker";
 
 export const metadata: Metadata = {
-  title: "RIVEN Business Hub",
-  description: "Business management dashboard for RIVEN",
+  title: "RIVEN Voice CRM",
+  description: "Voice-powered CRM for fitness coaching",
   manifest: "/manifest.json",
   appleWebApp: {
     capable: true,
     statusBarStyle: "black-translucent",
-    title: "RIVEN Hub",
+    title: "RIVEN CRM",
   },
   icons: {
     icon: "/api/icon?size=32",

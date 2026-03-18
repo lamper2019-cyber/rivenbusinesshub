@@ -4,21 +4,20 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 
 const navItems = [
-  { href: "/leads", label: "Lead Tracker", icon: "🎯" },
-  { href: "/clients", label: "Client Dashboard", icon: "👤" },
-  { href: "/checkin", label: "Check-In Form", icon: "📋" },
-  { href: "/onboarding", label: "Onboarding", icon: "🚀" },
+  { href: "/clients", label: "Clients", icon: "👤" },
+  { href: "/leads", label: "Leads", icon: "🎯" },
+  { href: "/checkins", label: "Check-ins", icon: "📊" },
 ];
 
 export default function Sidebar() {
   const pathname = usePathname();
 
   return (
-    <aside className="fixed left-0 top-0 h-full w-64 bg-riven-card border-r border-riven-border flex flex-col z-50">
+    <aside className="hidden md:flex fixed left-0 top-0 h-full w-64 bg-riven-card border-r border-riven-border flex-col z-50">
       <div className="p-6 border-b border-riven-border">
         <h1 className="text-2xl font-bold tracking-tight">
           <span className="text-riven-gold">RIVEN</span>{" "}
-          <span className="text-white text-lg font-normal">Business Hub</span>
+          <span className="text-white text-lg font-normal">Voice CRM</span>
         </h1>
       </div>
       <nav className="flex-1 py-4">
@@ -42,7 +41,7 @@ export default function Sidebar() {
         })}
       </nav>
       <div className="p-6 border-t border-riven-border">
-        <p className="text-xs text-riven-muted">RIVEN Business Hub v1.0</p>
+        <p className="text-xs text-riven-muted">RIVEN Voice CRM v2.0</p>
       </div>
     </aside>
   );
