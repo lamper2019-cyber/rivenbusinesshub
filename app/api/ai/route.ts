@@ -21,12 +21,15 @@ export async function POST(req: Request) {
       );
     }
 
-    const response = await chat(
+    const result = await chat(
       messages as ChatMessage[],
       context || { clients: [], leads: [] }
     );
 
-    return NextResponse.json({ response });
+    return NextResponse.json({
+      response: result.text,
+      actions: result.actions,
+    });
   } catch (err: unknown) {
     const message = err instanceof Error ? err.message : "Unknown error";
     console.error("Chat API error:", message);

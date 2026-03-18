@@ -1,12 +1,28 @@
 "use client";
 
 import { useState, useRef, useEffect, useCallback } from "react";
-import { getAllClients, getAllLeads } from "@/lib/db";
+import { v4 as uuid } from "uuid";
+import {
+  getAllClients,
+  getAllLeads,
+  putClient,
+  putLead,
+  getClient,
+  getLead,
+} from "@/lib/db";
+import type { Client, Lead } from "@/lib/types";
+
+interface ChatAction {
+  type: "update_client" | "add_client" | "update_lead" | "add_lead";
+  name?: string;
+  fields: Record<string, string | number>;
+}
 
 interface Message {
   role: "user" | "assistant";
   content: string;
   file?: { name: string; text: string };
+  actions?: ChatAction[];
 }
 
 export default function ChatPage() {
@@ -14,7 +30,7 @@ export default function ChatPage() {
     {
       role: "assistant",
       content:
-        "Hey! I'm your RIVEN assistant. I can see all your clients and leads. Ask me anything — who needs a check-in, coaching tips, lead follow-ups, or upload a file and I'll help you make sense of it.",
+        "Hey! I'm your RIVEN assistant. I can see all your clients and leads. Ask me anything, tell me to update a client's info, add new people, or upload a file and I'll help you make sense of it.",
     },
   ]);
   const [input, setInput] = useState("");
@@ -31,7 +47,6 @@ export default function ChatPage() {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [messages]);
 
-  // Auto-resize textarea
   useEffect(() => {
     if (textareaRef.current) {
       textareaRef.current.style.height = "auto";
@@ -39,6 +54,104 @@ export default function ChatPage() {
         Math.min(textareaRef.current.scrollHeight, 150) + "px";
     }
   }, [input]);
+
+  // Execute actions returned by the AI (update/add clients and leads)
+  async function executeActions(actions: ChatAction[]): Promise<string[]> {
+    const results: string[] = [];
+
+    for (const action of actions) {
+      try {
+        if (action.type === "update_client" && action.name) {
+          const clients = await getAllClients();
+          const match = clients.find((c) =>
+            c.name.toLowerCase().includes(action.name!.toLowerCase())
+          );
+          if (match) {
+            const updated = { ...match };
+            for (const [key, value] of Object.entries(action.fields)) {
+              if (key === "phase") {
+                updated.phase = Number(value) as 1 | 2 | 3;
+              } else if (key === "startingWeight") {
+                updated.startingWeight = Number(value);
+                updated.totalLost = updated.startingWeight - updated.currentWeight;
+              } else if (key === "currentWeight") {
+                updated.currentWeight = Number(value);
+                updated.totalLost = updated.startingWeight - updated.currentWeight;
+              } else if (key in updated) {
+                (updated as Record<string, unknown>)[key] = value;
+              }
+            }
+            await putClient(updated);
+            results.push(`Updated ${match.name}`);
+          } else {
+            results.push(`Could not find client "${action.name}"`);
+          }
+        } else if (action.type === "add_client") {
+          const newClient: Client = {
+            id: uuid(),
+            name: String(action.fields.name || "New Client"),
+            phase: (Number(action.fields.phase) || 1) as 1 | 2 | 3,
+            startDate:
+              String(action.fields.startDate || new Date().toISOString().split("T")[0]),
+            startingWeight: Number(action.fields.startingWeight) || 0,
+            currentWeight:
+              Number(action.fields.currentWeight) ||
+              Number(action.fields.startingWeight) ||
+              0,
+            totalLost: 0,
+            tendencyType:
+              (String(action.fields.tendencyType || "") as Client["tendencyType"]) || "",
+            lastCheckInDate: "",
+            status: (String(action.fields.status || "active")) as Client["status"],
+            notes: String(action.fields.notes || ""),
+            createdAt: new Date().toISOString(),
+            updatedAt: new Date().toISOString(),
+            syncedAt: "",
+          };
+          await putClient(newClient);
+          results.push(`Added client: ${newClient.name}`);
+        } else if (action.type === "update_lead" && action.name) {
+          const leads = await getAllLeads();
+          const match = leads.find((l) =>
+            l.name.toLowerCase().includes(action.name!.toLowerCase())
+          );
+          if (match) {
+            const updated = { ...match };
+            for (const [key, value] of Object.entries(action.fields)) {
+              if (key in updated) {
+                (updated as Record<string, unknown>)[key] = value;
+              }
+            }
+            await putLead(updated);
+            results.push(`Updated lead: ${match.name}`);
+          } else {
+            results.push(`Could not find lead "${action.name}"`);
+          }
+        } else if (action.type === "add_lead") {
+          const newLead: Lead = {
+            id: uuid(),
+            name: String(action.fields.name || "New Lead"),
+            status: (String(action.fields.status || "new")) as Lead["status"],
+            followUpDate: String(action.fields.followUpDate || ""),
+            notes: String(action.fields.notes || ""),
+            source: (String(action.fields.source || "")) as Lead["source"],
+            email: String(action.fields.email || ""),
+            phone: String(action.fields.phone || ""),
+            createdAt: new Date().toISOString(),
+            updatedAt: new Date().toISOString(),
+            syncedAt: "",
+          };
+          await putLead(newLead);
+          results.push(`Added lead: ${newLead.name}`);
+        }
+      } catch (err) {
+        console.error("Action failed:", err);
+        results.push(`Failed to execute: ${action.type}`);
+      }
+    }
+
+    return results;
+  }
 
   const sendMessage = useCallback(async () => {
     const text = input.trim();
@@ -58,13 +171,11 @@ export default function ChatPage() {
     setLoading(true);
 
     try {
-      // Gather CRM data context
       const [clients, leads] = await Promise.all([
         getAllClients(),
         getAllLeads(),
       ]);
 
-      // Build chat history for API (exclude file metadata, include file text inline)
       const apiMessages = newMessages
         .filter((m) => m.role === "user" || m.role === "assistant")
         .map((m) => {
@@ -75,7 +186,6 @@ export default function ChatPage() {
           return { role: m.role, content };
         });
 
-      // Remove the initial greeting from API messages
       const chatMessages = apiMessages.slice(1);
 
       const res = await fetch("/api/ai", {
@@ -85,6 +195,7 @@ export default function ChatPage() {
           messages: chatMessages,
           context: {
             clients: clients.map((c) => ({
+              id: c.id,
               name: c.name,
               phase: c.phase,
               status: c.status,
@@ -97,6 +208,7 @@ export default function ChatPage() {
               notes: c.notes,
             })),
             leads: leads.map((l) => ({
+              id: l.id,
               name: l.name,
               status: l.status,
               source: l.source,
@@ -117,9 +229,23 @@ export default function ChatPage() {
           { role: "assistant", content: `Error: ${data.error}` },
         ]);
       } else {
+        let responseText = data.response;
+
+        // Execute any actions the AI returned
+        if (data.actions && data.actions.length > 0) {
+          const results = await executeActions(data.actions);
+          if (results.length > 0) {
+            responseText += "\n\n✅ " + results.join("\n✅ ");
+          }
+        }
+
         setMessages([
           ...newMessages,
-          { role: "assistant", content: data.response },
+          {
+            role: "assistant",
+            content: responseText,
+            actions: data.actions,
+          },
         ]);
       }
     } catch (err) {
@@ -128,7 +254,8 @@ export default function ChatPage() {
         ...newMessages,
         {
           role: "assistant",
-          content: "Sorry, something went wrong. Check your connection and try again.",
+          content:
+            "Sorry, something went wrong. Check your connection and try again.",
         },
       ]);
     }
@@ -140,14 +267,13 @@ export default function ChatPage() {
     const file = e.target.files?.[0];
     if (!file) return;
 
-    // Read file as text
     const text = await new Promise<string>((resolve) => {
       const reader = new FileReader();
       reader.onload = () => resolve(reader.result as string);
       reader.readAsText(file);
     });
 
-    setUploadedFile({ name: file.name, text: text.slice(0, 50000) }); // Cap at 50k chars
+    setUploadedFile({ name: file.name, text: text.slice(0, 50000) });
     if (fileRef.current) fileRef.current.value = "";
   }
 
@@ -160,7 +286,6 @@ export default function ChatPage() {
 
   return (
     <div className="flex flex-col h-[calc(100vh-2rem)] md:h-[calc(100vh-4rem)] max-w-3xl mx-auto">
-      {/* Header */}
       <div className="flex items-center gap-2 mb-4">
         <h1 className="text-2xl font-bold">
           <span className="text-riven-gold">Chat</span>
@@ -170,7 +295,6 @@ export default function ChatPage() {
         </span>
       </div>
 
-      {/* Messages */}
       <div className="flex-1 overflow-y-auto space-y-3 mb-4 pr-1">
         {messages.map((msg, i) => (
           <div
@@ -187,9 +311,7 @@ export default function ChatPage() {
               {msg.file && (
                 <div
                   className={`text-xs mb-1 flex items-center gap-1 ${
-                    msg.role === "user"
-                      ? "text-black/60"
-                      : "text-riven-muted"
+                    msg.role === "user" ? "text-black/60" : "text-riven-muted"
                   }`}
                 >
                   📎 {msg.file.name}
@@ -221,7 +343,6 @@ export default function ChatPage() {
         <div ref={messagesEndRef} />
       </div>
 
-      {/* File preview */}
       {uploadedFile && (
         <div className="flex items-center gap-2 mb-2 bg-riven-card border border-riven-border rounded-lg px-3 py-2 text-sm animate-fade-in">
           <span>📎</span>
@@ -237,7 +358,6 @@ export default function ChatPage() {
         </div>
       )}
 
-      {/* Input area */}
       <div className="flex items-end gap-2 bg-riven-card border border-riven-border rounded-xl p-2">
         <input
           ref={fileRef}
