@@ -37,10 +37,10 @@ export default function SmartTip({
           <span className="text-lg">⏰</span>
           <div>
             <p className="text-sm font-medium text-riven-gold">
-              Check-in overdue
+              Weigh-in overdue
             </p>
             <p className="text-xs text-riven-muted">
-              {clientName} hasn&apos;t checked in for over 7 days.{" "}
+              {clientName} hasn&apos;t weighed in for over 7 days.{" "}
               {info ? info.checkInApproach : "Schedule a follow-up."}
             </p>
           </div>

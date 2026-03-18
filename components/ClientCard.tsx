@@ -81,11 +81,11 @@ export default function ClientCard({ client }: { client: Client }) {
         <div className="flex items-center justify-between text-xs text-riven-muted">
           <span>
             {client.lastCheckInDate
-              ? `Last check-in: ${new Date(client.lastCheckInDate).toLocaleDateString()}`
-              : "No check-ins yet"}
+              ? `Last weigh-in: ${new Date(client.lastCheckInDate).toLocaleDateString()}`
+              : "No weigh-ins yet"}
           </span>
           {overdue && (
-            <span className="text-riven-gold font-medium">Needs check-in</span>
+            <span className="text-riven-gold font-medium">Needs weigh-in</span>
           )}
         </div>
       </div>

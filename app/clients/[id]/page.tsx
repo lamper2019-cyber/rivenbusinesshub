@@ -244,7 +244,7 @@ export default function ClientProfilePage() {
               : "bg-riven-card text-riven-muted border border-riven-border hover:text-white"
           }`}
         >
-          Check-in History ({checkins.length})
+          Weigh-in History ({checkins.length})
         </button>
         <button
           onClick={() => setTab("files")}
@@ -262,7 +262,7 @@ export default function ClientProfilePage() {
         <div>
           {checkins.length === 0 ? (
             <p className="text-center py-8 text-riven-muted text-sm">
-              No check-ins yet for {client.name}
+              No weigh-ins yet for {client.name}
             </p>
           ) : (
             <div className="ml-2">
