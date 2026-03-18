@@ -1,25 +1,13 @@
 "use client";
 
-import { usePathname } from "next/navigation";
 import Sidebar from "./Sidebar";
 import BottomTabBar from "./BottomTabBar";
-
-const CLIENT_FACING_ROUTES = ["/checkin", "/onboarding"];
 
 export default function LayoutShell({
   children,
 }: {
   children: React.ReactNode;
 }) {
-  const pathname = usePathname();
-  const isClientFacing = CLIENT_FACING_ROUTES.some(
-    (route) => pathname === route || pathname.startsWith(route + "/")
-  );
-
-  if (isClientFacing) {
-    return <>{children}</>;
-  }
-
   return (
     <div className="min-h-screen">
       <Sidebar />

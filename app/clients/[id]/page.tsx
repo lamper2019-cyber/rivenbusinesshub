@@ -2,10 +2,9 @@
 
 import { useState, useEffect, useCallback } from "react";
 import { useParams, useRouter } from "next/navigation";
-import type { Client, CheckIn, TendencyType } from "@/lib/types";
-import { getClient, putClient, deleteClient, getCheckInsForClient } from "@/lib/db";
+import type { Client, TendencyType } from "@/lib/types";
+import { getClient, putClient, deleteClient } from "@/lib/db";
 import SmartTip from "@/components/SmartTip";
-import CheckInTimeline from "@/components/CheckInTimeline";
 import FileUpload from "@/components/FileUpload";
 import FileList from "@/components/FileList";
 
@@ -15,18 +14,14 @@ export default function ClientProfilePage() {
   const id = params.id as string;
 
   const [client, setClient] = useState<Client | null>(null);
-  const [checkins, setCheckins] = useState<CheckIn[]>([]);
   const [editing, setEditing] = useState(false);
   const [form, setForm] = useState<Client | null>(null);
-  const [tab, setTab] = useState<"history" | "files">("history");
 
   const load = useCallback(async () => {
     const c = await getClient(id);
     if (c) {
       setClient(c);
       setForm(c);
-      const ci = await getCheckInsForClient(id);
-      setCheckins(ci);
     }
   }, [id]);
 
@@ -230,56 +225,24 @@ export default function ClientProfilePage() {
                   : "—"}
               </p>
             </div>
+            {client.lastCheckInDate && (
+              <div>
+                <p className="text-xs text-riven-muted">Last Weigh-in</p>
+                <p className="text-sm text-white">
+                  {new Date(client.lastCheckInDate).toLocaleDateString()}
+                </p>
+              </div>
+            )}
           </div>
         )}
       </div>
 
-      {/* Tabs for history and files */}
-      <div className="flex gap-1 mt-6 mb-4">
-        <button
-          onClick={() => setTab("history")}
-          className={`px-4 py-2 text-sm rounded-lg transition-colors ${
-            tab === "history"
-              ? "bg-riven-gold text-black font-semibold"
-              : "bg-riven-card text-riven-muted border border-riven-border hover:text-white"
-          }`}
-        >
-          Weigh-in History ({checkins.length})
-        </button>
-        <button
-          onClick={() => setTab("files")}
-          className={`px-4 py-2 text-sm rounded-lg transition-colors ${
-            tab === "files"
-              ? "bg-riven-gold text-black font-semibold"
-              : "bg-riven-card text-riven-muted border border-riven-border hover:text-white"
-          }`}
-        >
-          Files
-        </button>
+      {/* Files */}
+      <div className="mt-6">
+        <h3 className="text-sm font-semibold text-white mb-3">Files</h3>
+        <FileUpload clientId={id} onUpload={load} />
+        <FileList clientId={id} />
       </div>
-
-      {tab === "history" && (
-        <div>
-          {checkins.length === 0 ? (
-            <p className="text-center py-8 text-riven-muted text-sm">
-              No weigh-ins yet for {client.name}
-            </p>
-          ) : (
-            <div className="ml-2">
-              {checkins.map((ci) => (
-                <CheckInTimeline key={ci.id} checkin={ci} />
-              ))}
-            </div>
-          )}
-        </div>
-      )}
-
-      {tab === "files" && (
-        <div>
-          <FileUpload clientId={id} onUpload={load} />
-          <FileList clientId={id} />
-        </div>
-      )}
     </div>
   );
 }
