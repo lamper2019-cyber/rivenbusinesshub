@@ -1,77 +1,96 @@
 import Anthropic from "@anthropic-ai/sdk";
-import type { AIInterpretation } from "./types";
 
-const client = new Anthropic({
+const anthropic = new Anthropic({
   apiKey: process.env.ANTHROPIC_API_KEY,
 });
 
-const SYSTEM_PROMPT = `You are a voice assistant for RIVEN, a fitness coaching CRM. You interpret spoken commands and answer questions about client and lead data.
+const SYSTEM_PROMPT = `You are RIVEN Assistant, an AI assistant built into a fitness coaching CRM. You have full access to the coach's client data, lead data, and any uploaded files/documents.
 
-Available actions (respond with the matching intent):
+Your job:
+- Answer questions about clients (weight progress, tendency types, check-in history, status, etc.)
+- Answer questions about leads (status, follow-up dates, sources, etc.)
+- Help analyze uploaded documents (CSVs, meeting transcripts, typeform exports, notes)
+- Give coaching suggestions based on client tendency types (Obliger, Upholder, Questioner, Rebel)
+- Flag who needs check-ins, follow-ups, or attention
+- Help update client/lead information when asked (provide the specific changes to make)
+- Summarize data, spot trends, and give actionable insights
 
-1. "add_client" — Create a new client. Extract fields: name (required), phase (1/2/3, default 1), startingWeight, tendencyType (Obliger/Upholder/Questioner/Rebel).
-   Example: "Add a client named Sarah, she's 180 pounds, she's an Obliger"
+Tendency Types & Coaching Approaches:
+- Obliger: Responds to external accountability. Be their accountability partner.
+- Upholder: Thrives with structure and clear rules. Give detailed plans.
+- Questioner: Needs to understand WHY. Lead with data and reasoning.
+- Rebel: Resists being told what to do. Frame choices as their decision.
 
-2. "add_lead" — Create a new lead. Extract fields: name (required), source (referral/instagram/facebook/website/other), notes.
-   Example: "Add a lead named Mike from Instagram"
+Be concise, friendly, and actionable. Use the data provided to give specific, personalized answers. If you don't have enough data to answer, say so clearly.`;
 
-3. "log_checkin" — Log a check-in for an existing client. Extract fields: clientName (required), currentWeight, feeling (1-10), notes.
-   Example: "Log a check-in for Sarah, she's at 175 pounds, feeling great"
+export interface ChatMessage {
+  role: "user" | "assistant";
+  content: string;
+}
 
-4. "query_data" — Answer a question about the data. Use the provided context to answer.
-   Example: "Who hasn't checked in this week?" or "What tendency type is Sarah?"
+export async function chat(
+  messages: ChatMessage[],
+  context: {
+    clients: Array<Record<string, string | number>>;
+    leads: Array<Record<string, string | number>>;
+    uploadedText?: string;
+  }
+): Promise<string> {
+  const contextStr = buildContext(context);
 
-5. "unknown" — If you can't determine the intent.
+  // Prepend context to the first user message
+  const apiMessages = messages.map((msg, i) => {
+    if (i === 0 && msg.role === "user") {
+      return {
+        role: msg.role as "user",
+        content: `[CRM DATA CONTEXT]\n${contextStr}\n\n[USER MESSAGE]\n${msg.content}`,
+      };
+    }
+    return { role: msg.role as "user" | "assistant", content: msg.content };
+  });
 
-IMPORTANT: Respond with valid JSON only, no markdown. Format:
-{"intent":"...","entities":{...},"response":"..."}
-
-- "entities" should contain extracted field names and values as strings
-- "response" should be a natural, friendly confirmation or answer (1-2 sentences)
-- For query_data, put the answer in "response"
-- Match client names loosely (e.g., "Sarah" matches "Sarah Johnson")`;
-
-export async function interpretVoice(
-  transcript: string,
-  context: { clients: Array<{ name: string; tendencyType: string; lastCheckInDate: string; status: string }>; leads: Array<{ name: string; status: string; followUpDate: string }> }
-): Promise<AIInterpretation> {
-  const contextStr = `
-Current Clients (${context.clients.length}):
-${context.clients.map((c) => `- ${c.name} | Tendency: ${c.tendencyType || "unknown"} | Last check-in: ${c.lastCheckInDate || "never"} | Status: ${c.status}`).join("\n")}
-
-Current Leads (${context.leads.length}):
-${context.leads.map((l) => `- ${l.name} | Status: ${l.status} | Follow-up: ${l.followUpDate || "none"}`).join("\n")}
-
-Today's date: ${new Date().toISOString().split("T")[0]}
-`;
-
-  const response = await client.messages.create({
+  const response = await anthropic.messages.create({
     model: "claude-sonnet-4-20250514",
-    max_tokens: 500,
+    max_tokens: 2000,
     system: SYSTEM_PROMPT,
-    messages: [
-      {
-        role: "user",
-        content: `DATA CONTEXT:\n${contextStr}\n\nUSER SAID: "${transcript}"`,
-      },
-    ],
+    messages: apiMessages,
   });
 
   const text =
     response.content[0].type === "text" ? response.content[0].text : "";
+  return text || "I wasn't able to generate a response. Please try again.";
+}
 
-  try {
-    const parsed = JSON.parse(text);
-    return {
-      intent: parsed.intent || "unknown",
-      entities: parsed.entities || {},
-      response: parsed.response || "I didn't understand that.",
-    };
-  } catch {
-    return {
-      intent: "unknown",
-      entities: {},
-      response: text || "Sorry, I had trouble processing that.",
-    };
+function buildContext(context: {
+  clients: Array<Record<string, string | number>>;
+  leads: Array<Record<string, string | number>>;
+  uploadedText?: string;
+}): string {
+  const today = new Date().toISOString().split("T")[0];
+
+  let str = `Today: ${today}\n\n`;
+
+  str += `=== CLIENTS (${context.clients.length}) ===\n`;
+  if (context.clients.length === 0) {
+    str += "No clients yet.\n";
+  } else {
+    context.clients.forEach((c) => {
+      str += `- ${c.name} | Phase: ${c.phase} | Status: ${c.status} | Tendency: ${c.tendencyType || "unknown"} | Start Weight: ${c.startingWeight} | Current Weight: ${c.currentWeight} | Lost: ${c.totalLost} | Last Check-in: ${c.lastCheckInDate || "never"}\n`;
+    });
   }
+
+  str += `\n=== LEADS (${context.leads.length}) ===\n`;
+  if (context.leads.length === 0) {
+    str += "No leads yet.\n";
+  } else {
+    context.leads.forEach((l) => {
+      str += `- ${l.name} | Status: ${l.status} | Source: ${l.source || "unknown"} | Follow-up: ${l.followUpDate || "none"} | Notes: ${l.notes || "none"}\n`;
+    });
+  }
+
+  if (context.uploadedText) {
+    str += `\n=== UPLOADED DOCUMENT ===\n${context.uploadedText}\n`;
+  }
+
+  return str;
 }

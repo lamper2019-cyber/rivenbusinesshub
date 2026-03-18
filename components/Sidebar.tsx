@@ -7,6 +7,7 @@ const navItems = [
   { href: "/clients", label: "Clients", icon: "👤" },
   { href: "/leads", label: "Leads", icon: "🎯" },
   { href: "/checkins", label: "Check-ins", icon: "📊" },
+  { href: "/chat", label: "Chat", icon: "💬" },
 ];
 
 export default function Sidebar() {
@@ -17,7 +18,7 @@ export default function Sidebar() {
       <div className="p-6 border-b border-riven-border">
         <h1 className="text-2xl font-bold tracking-tight">
           <span className="text-riven-gold">RIVEN</span>{" "}
-          <span className="text-white text-lg font-normal">Voice CRM</span>
+          <span className="text-white text-lg font-normal">CRM</span>
         </h1>
       </div>
       <nav className="flex-1 py-4">
@@ -41,7 +42,7 @@ export default function Sidebar() {
         })}
       </nav>
       <div className="p-6 border-t border-riven-border">
-        <p className="text-xs text-riven-muted">RIVEN Voice CRM v2.0</p>
+        <p className="text-xs text-riven-muted">RIVEN CRM v2.0</p>
       </div>
     </aside>
   );

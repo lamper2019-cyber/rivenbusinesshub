@@ -3,7 +3,6 @@
 import { usePathname } from "next/navigation";
 import Sidebar from "./Sidebar";
 import BottomTabBar from "./BottomTabBar";
-import VoiceButton from "./VoiceButton";
 
 const CLIENT_FACING_ROUTES = ["/checkin", "/onboarding"];
 
@@ -26,7 +25,6 @@ export default function LayoutShell({
       <Sidebar />
       <BottomTabBar />
       <main className="md:ml-64 p-4 md:p-8 pb-24 md:pb-8">{children}</main>
-      <VoiceButton />
     </div>
   );
 }

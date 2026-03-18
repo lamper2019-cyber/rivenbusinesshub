@@ -1,7 +1,7 @@
 {
-  "name": "RIVEN Voice CRM",
+  "name": "RIVEN CRM",
   "short_name": "RIVEN CRM",
-  "description": "Voice-powered CRM for fitness coaching",
+  "description": "AI-powered CRM for fitness coaching",
   "start_url": "/clients",
   "display": "standalone",
   "background_color": "#0A0A0A",

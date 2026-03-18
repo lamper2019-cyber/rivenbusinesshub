@@ -1,31 +1,35 @@
 import { NextResponse } from "next/server";
-import { interpretVoice } from "@/lib/ai";
+import { chat, type ChatMessage } from "@/lib/ai";
 
 export const dynamic = "force-dynamic";
 
 export async function POST(req: Request) {
   try {
-    const { transcript, context } = await req.json();
+    const { messages, context } = await req.json();
 
-    if (!transcript) {
+    if (!messages || !Array.isArray(messages) || messages.length === 0) {
       return NextResponse.json(
-        { error: "No transcript provided" },
+        { error: "No messages provided" },
         { status: 400 }
       );
     }
 
     if (!process.env.ANTHROPIC_API_KEY) {
       return NextResponse.json(
-        { error: "ANTHROPIC_API_KEY not configured" },
+        { error: "ANTHROPIC_API_KEY not configured. Add it in Vercel Settings > Environment Variables." },
         { status: 500 }
       );
     }
 
-    const result = await interpretVoice(transcript, context || { clients: [], leads: [] });
-    return NextResponse.json(result);
+    const response = await chat(
+      messages as ChatMessage[],
+      context || { clients: [], leads: [] }
+    );
+
+    return NextResponse.json({ response });
   } catch (err: unknown) {
     const message = err instanceof Error ? err.message : "Unknown error";
-    console.error("AI route error:", message);
+    console.error("Chat API error:", message);
     return NextResponse.json({ error: message }, { status: 500 });
   }
 }

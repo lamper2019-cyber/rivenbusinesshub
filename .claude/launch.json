@@ -1,0 +1,11 @@
+{
+  "version": "0.0.1",
+  "configurations": [
+    {
+      "name": "riven-hub",
+      "runtimeExecutable": "bash",
+      "runtimeArgs": ["-c", "cd '/Users/youngrxse/CLaude code/riven-business-hub' && npx next dev -p 3002"],
+      "port": 3002
+    }
+  ]
+}

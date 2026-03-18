@@ -4,8 +4,8 @@ import LayoutShell from "@/components/LayoutShell";
 import ServiceWorker from "@/components/ServiceWorker";
 
 export const metadata: Metadata = {
-  title: "RIVEN Voice CRM",
-  description: "Voice-powered CRM for fitness coaching",
+  title: "RIVEN CRM",
+  description: "AI-powered CRM for fitness coaching",
   manifest: "/manifest.json",
   appleWebApp: {
     capable: true,
