@@ -4,6 +4,7 @@ import { useState, useEffect, useCallback } from "react";
 import { v4 as uuid } from "uuid";
 import type { Lead } from "@/lib/types";
 import { getAllLeads, putLead, deleteLead } from "@/lib/db";
+import { importFromSheets } from "@/lib/sync";
 import LeadCard from "@/components/LeadCard";
 
 const emptyLead = (): Lead => ({
@@ -29,7 +30,18 @@ export default function LeadsPage() {
   const [loading, setLoading] = useState(true);
 
   const load = useCallback(async () => {
-    const data = await getAllLeads();
+    let data = await getAllLeads();
+    // Auto-import from Google Sheets if IndexedDB is empty
+    if (data.length === 0) {
+      try {
+        const result = await importFromSheets();
+        if (result.imported > 0) {
+          data = await getAllLeads();
+        }
+      } catch (e) {
+        console.error("Auto-import failed:", e);
+      }
+    }
     setLeads(data);
     setLoading(false);
   }, []);

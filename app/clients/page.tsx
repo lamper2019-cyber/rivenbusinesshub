@@ -4,6 +4,7 @@ import { useState, useEffect, useCallback } from "react";
 import { v4 as uuid } from "uuid";
 import type { Client, TendencyType } from "@/lib/types";
 import { getAllClients, putClient } from "@/lib/db";
+import { importFromSheets } from "@/lib/sync";
 import ClientCard from "@/components/ClientCard";
 
 const emptyClient = (): Client => ({
@@ -32,7 +33,18 @@ export default function ClientsPage() {
   const [loading, setLoading] = useState(true);
 
   const load = useCallback(async () => {
-    const data = await getAllClients();
+    let data = await getAllClients();
+    // Auto-import from Google Sheets if IndexedDB is empty
+    if (data.length === 0) {
+      try {
+        const result = await importFromSheets();
+        if (result.imported > 0) {
+          data = await getAllClients();
+        }
+      } catch (e) {
+        console.error("Auto-import failed:", e);
+      }
+    }
     setClients(data);
     setLoading(false);
   }, []);
