@@ -7,16 +7,8 @@ import {
   getAllLeads,
   putClient,
   putLead,
-  getClient,
-  getLead,
 } from "@/lib/db";
-import type { Client, Lead } from "@/lib/types";
-
-interface ChatAction {
-  type: "update_client" | "add_client" | "update_lead" | "add_lead";
-  name?: string;
-  fields: Record<string, string | number>;
-}
+import type { Client, Lead, ChatAction } from "@/lib/types";
 
 interface Message {
   role: "user" | "assistant";
@@ -30,7 +22,7 @@ export default function ChatPage() {
     {
       role: "assistant",
       content:
-        "Hey! I'm your RIVEN assistant. I can see all your clients and leads. Ask me anything, tell me to update a client's info, add new people, or upload a file and I'll help you make sense of it.",
+        "Hey! I\u2019m your RIVEN assistant. I can see all your clients and leads. Ask me anything, tell me to update a client\u2019s info, add new people, or upload a file and I\u2019ll help you make sense of it.",
     },
   ]);
   const [input, setInput] = useState("");
@@ -55,7 +47,6 @@ export default function ChatPage() {
     }
   }, [input]);
 
-  // Execute actions returned by the AI (update/add clients and leads)
   async function executeActions(actions: ChatAction[]): Promise<string[]> {
     const results: string[] = [];
 
@@ -68,45 +59,68 @@ export default function ChatPage() {
           );
           if (match) {
             const updated = { ...match };
+            const today = new Date().toISOString().split("T")[0];
+            let addWeighIn = false;
+
             for (const [key, value] of Object.entries(action.fields)) {
+              if (key === "addWeighIn") {
+                addWeighIn = Boolean(value);
+                continue;
+              }
               if (key === "phase") {
                 updated.phase = Number(value) as 1 | 2 | 3;
               } else if (key === "startingWeight") {
                 updated.startingWeight = Number(value);
-                updated.totalLost = updated.startingWeight - updated.currentWeight;
+                updated.totalLost = Math.round((updated.startingWeight - updated.currentWeight) * 10) / 10;
               } else if (key === "currentWeight") {
                 updated.currentWeight = Number(value);
-                updated.totalLost = updated.startingWeight - updated.currentWeight;
+                updated.totalLost = Math.round((updated.startingWeight - updated.currentWeight) * 10) / 10;
+                // Auto update lastWeighInDate and add weigh-in entry
+                if (!action.fields.lastWeighInDate) {
+                  updated.lastWeighInDate = today;
+                }
+                addWeighIn = true;
+              } else if (key === "targetWeight") {
+                updated.targetWeight = Number(value);
               } else if (key in updated) {
                 (updated as Record<string, unknown>)[key] = value;
               }
             }
+
+            if (addWeighIn) {
+              if (!updated.weighIns) updated.weighIns = [];
+              updated.weighIns.push({
+                date: updated.lastWeighInDate || today,
+                weight: updated.currentWeight,
+              });
+            }
+
             await putClient(updated);
             results.push(`Updated ${match.name}`);
           } else {
             results.push(`Could not find client "${action.name}"`);
           }
         } else if (action.type === "add_client") {
+          const startWeight = Number(action.fields.startingWeight) || 0;
+          const curWeight = Number(action.fields.currentWeight) || startWeight;
           const newClient: Client = {
             id: uuid(),
             name: String(action.fields.name || "New Client"),
             phase: (Number(action.fields.phase) || 1) as 1 | 2 | 3,
             startDate:
               String(action.fields.startDate || new Date().toISOString().split("T")[0]),
-            startingWeight: Number(action.fields.startingWeight) || 0,
-            currentWeight:
-              Number(action.fields.currentWeight) ||
-              Number(action.fields.startingWeight) ||
-              0,
-            totalLost: 0,
+            startingWeight: startWeight,
+            currentWeight: curWeight,
+            targetWeight: Number(action.fields.targetWeight) || Math.round(startWeight * 0.9 * 10) / 10,
+            totalLost: Math.round((startWeight - curWeight) * 10) / 10,
             tendencyType:
               (String(action.fields.tendencyType || "") as Client["tendencyType"]) || "",
-            lastCheckInDate: "",
+            lastWeighInDate: String(action.fields.lastWeighInDate || new Date().toISOString().split("T")[0]),
+            weighIns: startWeight ? [{ date: new Date().toISOString().split("T")[0], weight: curWeight }] : [],
             status: (String(action.fields.status || "active")) as Client["status"],
             notes: String(action.fields.notes || ""),
             createdAt: new Date().toISOString(),
             updatedAt: new Date().toISOString(),
-            syncedAt: "",
           };
           await putClient(newClient);
           results.push(`Added client: ${newClient.name}`);
@@ -139,7 +153,6 @@ export default function ChatPage() {
             phone: String(action.fields.phone || ""),
             createdAt: new Date().toISOString(),
             updatedAt: new Date().toISOString(),
-            syncedAt: "",
           };
           await putLead(newLead);
           results.push(`Added lead: ${newLead.name}`);
@@ -202,8 +215,9 @@ export default function ChatPage() {
               tendencyType: c.tendencyType,
               startingWeight: c.startingWeight,
               currentWeight: c.currentWeight,
+              targetWeight: c.targetWeight,
               totalLost: c.totalLost,
-              lastCheckInDate: c.lastCheckInDate,
+              lastWeighInDate: c.lastWeighInDate,
               startDate: c.startDate,
               notes: c.notes,
             })),
@@ -231,11 +245,10 @@ export default function ChatPage() {
       } else {
         let responseText = data.response;
 
-        // Execute any actions the AI returned
         if (data.actions && data.actions.length > 0) {
           const results = await executeActions(data.actions);
           if (results.length > 0) {
-            responseText += "\n\n✅ " + results.join("\n✅ ");
+            responseText += "\n\n" + results.map((r: string) => `Done: ${r}`).join("\n");
           }
         }
 
@@ -287,7 +300,7 @@ export default function ChatPage() {
   return (
     <div className="flex flex-col h-[calc(100vh-2rem)] md:h-[calc(100vh-4rem)] max-w-3xl mx-auto">
       <div className="flex items-center gap-2 mb-4">
-        <h1 className="text-2xl font-bold">
+        <h1 className="text-2xl font-headline font-bold">
           <span className="text-riven-gold">Chat</span>
         </h1>
         <span className="text-xs text-riven-muted bg-white/5 px-2 py-0.5 rounded">
@@ -305,7 +318,7 @@ export default function ChatPage() {
               className={`max-w-[85%] rounded-2xl px-4 py-2.5 text-sm whitespace-pre-wrap ${
                 msg.role === "user"
                   ? "bg-riven-gold text-black rounded-br-md"
-                  : "bg-riven-card border border-riven-border text-white rounded-bl-md"
+                  : "bg-riven-card text-white rounded-bl-md"
               }`}
             >
               {msg.file && (
@@ -314,7 +327,8 @@ export default function ChatPage() {
                     msg.role === "user" ? "text-black/60" : "text-riven-muted"
                   }`}
                 >
-                  📎 {msg.file.name}
+                  <span className="material-symbols-outlined text-xs">attach_file</span>
+                  {msg.file.name}
                 </div>
               )}
               {msg.content}
@@ -324,7 +338,7 @@ export default function ChatPage() {
 
         {loading && (
           <div className="flex justify-start">
-            <div className="bg-riven-card border border-riven-border rounded-2xl rounded-bl-md px-4 py-3">
+            <div className="bg-riven-card rounded-2xl rounded-bl-md px-4 py-3">
               <div className="flex gap-1">
                 <span className="w-2 h-2 bg-riven-gold rounded-full animate-bounce" />
                 <span
@@ -344,21 +358,21 @@ export default function ChatPage() {
       </div>
 
       {uploadedFile && (
-        <div className="flex items-center gap-2 mb-2 bg-riven-card border border-riven-border rounded-lg px-3 py-2 text-sm animate-fade-in">
-          <span>📎</span>
+        <div className="flex items-center gap-2 mb-2 bg-riven-card rounded-xl px-3 py-2 text-sm animate-fade-in">
+          <span className="material-symbols-outlined text-riven-gold text-base">attach_file</span>
           <span className="text-white flex-1 truncate">
             {uploadedFile.name}
           </span>
           <button
             onClick={() => setUploadedFile(null)}
-            className="text-riven-muted hover:text-white text-xs"
+            className="text-riven-muted hover:text-white"
           >
-            ✕
+            <span className="material-symbols-outlined text-base">close</span>
           </button>
         </div>
       )}
 
-      <div className="flex items-end gap-2 bg-riven-card border border-riven-border rounded-xl p-2">
+      <div className="flex items-end gap-2 bg-riven-card rounded-2xl p-2">
         <input
           ref={fileRef}
           type="file"
@@ -371,18 +385,7 @@ export default function ChatPage() {
           className="p-2 text-riven-muted hover:text-riven-gold transition-colors flex-shrink-0"
           title="Upload file"
         >
-          <svg
-            width="20"
-            height="20"
-            viewBox="0 0 24 24"
-            fill="none"
-            stroke="currentColor"
-            strokeWidth="2"
-            strokeLinecap="round"
-            strokeLinejoin="round"
-          >
-            <path d="M21.44 11.05l-9.19 9.19a6 6 0 01-8.49-8.49l9.19-9.19a4 4 0 015.66 5.66l-9.2 9.19a2 2 0 01-2.83-2.83l8.49-8.48" />
-          </svg>
+          <span className="material-symbols-outlined text-xl">attach_file</span>
         </button>
 
         <textarea
@@ -392,23 +395,16 @@ export default function ChatPage() {
           onKeyDown={handleKeyDown}
           placeholder="Ask about your clients, leads, or upload a file..."
           rows={1}
-          className="flex-1 bg-transparent text-white text-sm placeholder-riven-muted outline-none resize-none max-h-[150px]"
+          className="flex-1 bg-transparent text-white text-sm placeholder-riven-muted outline-none resize-none max-h-[150px] py-2"
         />
 
         <button
           onClick={sendMessage}
           disabled={loading || (!input.trim() && !uploadedFile)}
-          className="p-2 rounded-lg bg-riven-gold text-black flex-shrink-0 disabled:opacity-30 disabled:cursor-not-allowed hover:bg-riven-gold-light transition-colors"
+          className="p-2 rounded-xl bg-riven-gold text-black flex-shrink-0 disabled:opacity-30 disabled:cursor-not-allowed hover:bg-riven-gold-light transition-colors"
           title="Send"
         >
-          <svg
-            width="18"
-            height="18"
-            viewBox="0 0 24 24"
-            fill="currentColor"
-          >
-            <path d="M2.01 21L23 12 2.01 3 2 10l15 2-15 2z" />
-          </svg>
+          <span className="material-symbols-outlined text-xl">send</span>
         </button>
       </div>
     </div>

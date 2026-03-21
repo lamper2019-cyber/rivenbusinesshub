@@ -4,23 +4,23 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 
 const navItems = [
-  { href: "/clients", label: "Clients", icon: "👤" },
-  { href: "/leads", label: "Leads", icon: "🎯" },
-  { href: "/chat", label: "Chat", icon: "💬" },
+  { href: "/clients", label: "Clients", icon: "group" },
+  { href: "/leads", label: "Leads", icon: "target" },
+  { href: "/chat", label: "Chat", icon: "chat" },
 ];
 
 export default function Sidebar() {
   const pathname = usePathname();
 
   return (
-    <aside className="hidden md:flex fixed left-0 top-0 h-full w-64 bg-riven-card border-r border-riven-border flex-col z-50">
-      <div className="p-6 border-b border-riven-border">
-        <h1 className="text-2xl font-bold tracking-tight">
+    <aside className="hidden md:flex fixed left-0 top-0 h-full w-64 bg-riven-card flex-col z-50">
+      <div className="p-6">
+        <h1 className="text-2xl font-headline font-bold tracking-tight">
           <span className="text-riven-gold">RIVEN</span>{" "}
-          <span className="text-white text-lg font-normal">CRM</span>
+          <span className="text-white/60 text-lg font-normal">CRM</span>
         </h1>
       </div>
-      <nav className="flex-1 py-4">
+      <nav className="flex-1 py-2">
         {navItems.map((item) => {
           const isActive =
             pathname === item.href || pathname.startsWith(item.href + "/");
@@ -34,14 +34,14 @@ export default function Sidebar() {
                   : "text-riven-muted hover:text-white hover:bg-white/5"
               }`}
             >
-              <span className="text-lg">{item.icon}</span>
-              {item.label}
+              <span className="material-symbols-outlined text-xl">{item.icon}</span>
+              <span className="font-medium">{item.label}</span>
             </Link>
           );
         })}
       </nav>
-      <div className="p-6 border-t border-riven-border">
-        <p className="text-xs text-riven-muted">RIVEN CRM v2.0</p>
+      <div className="p-6">
+        <p className="text-xs text-riven-muted/60">RIVEN CRM v2.0</p>
       </div>
     </aside>
   );

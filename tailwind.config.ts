@@ -17,7 +17,12 @@ const config: Config = {
           border: "#1E1E1E",
           "border-light": "#2A2A2A",
           muted: "#888888",
+          surface: "#1A1A1A",
         },
+      },
+      fontFamily: {
+        headline: ["Manrope", "sans-serif"],
+        body: ["Inter", "sans-serif"],
       },
     },
   },

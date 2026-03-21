@@ -44,7 +44,14 @@ Add a lead:
 {"type": "add_lead", "fields": {"name": "Name", "source": "instagram"}}
 \`\`\`
 
-CLIENT FIELDS YOU CAN UPDATE: name, phase (1/2/3), status (active/paused/completed), tendencyType (Obliger/Upholder/Questioner/Rebel), startingWeight, currentWeight, lastCheckInDate (this is the last weigh-in date, use YYYY-MM-DD format), notes, startDate
+CLIENT FIELDS YOU CAN UPDATE: name, phase (1/2/3), status (active/paused/completed), tendencyType (Obliger/Upholder/Questioner/Rebel), startingWeight, currentWeight, targetWeight, lastWeighInDate (YYYY-MM-DD format), notes, startDate
+
+IMPORTANT WEIGHT UPDATE RULES:
+- When updating currentWeight, ALSO update lastWeighInDate to today's date
+- When updating currentWeight, ALSO include a weighIn entry: include "addWeighIn": true in the fields
+- "Last weigh-in" = lastWeighInDate field (NOT lastCheckInDate)
+- The system will automatically recalculate totalLost
+
 LEAD FIELDS YOU CAN UPDATE: name, status (new/contacted/interested/follow-up/closed/lost), source, followUpDate, notes, email, phone
 
 RULES:
@@ -52,8 +59,6 @@ RULES:
 - Match client/lead names loosely (e.g. "Tracy" matches "Tracey", "Sister Batten" matches "Denise Rhodes Batten")
 - You can include MULTIPLE action blocks for multiple changes in one message
 - Confirm what you changed in a brief response
-- "Last weigh-in" = lastCheckInDate field
-- When the coach says a weight, update currentWeight AND recalculate (don't update totalLost — the system does that)
 - Be concise and direct. No long explanations unless asked.`;
 
 export interface ChatMessage {
@@ -64,7 +69,7 @@ export interface ChatMessage {
 export interface ChatAction {
   type: "update_client" | "add_client" | "update_lead" | "add_lead";
   name?: string;
-  fields: Record<string, string | number>;
+  fields: Record<string, string | number | boolean>;
 }
 
 export interface ChatResponse {
@@ -75,8 +80,8 @@ export interface ChatResponse {
 export async function chat(
   messages: ChatMessage[],
   context: {
-    clients: Array<Record<string, string | number>>;
-    leads: Array<Record<string, string | number>>;
+    clients: Array<Record<string, unknown>>;
+    leads: Array<Record<string, unknown>>;
     uploadedText?: string;
   }
 ): Promise<ChatResponse> {
@@ -102,7 +107,6 @@ export async function chat(
   const rawText =
     response.content[0].type === "text" ? response.content[0].text : "";
 
-  // Extract action blocks from the response
   const actions: ChatAction[] = [];
   const actionRegex = /```action\s*\n([\s\S]*?)\n```/g;
   let match;
@@ -115,7 +119,6 @@ export async function chat(
     }
   }
 
-  // Remove action blocks from visible text
   const text = rawText
     .replace(/```action\s*\n[\s\S]*?\n```/g, "")
     .trim();
@@ -127,8 +130,8 @@ export async function chat(
 }
 
 function buildContext(context: {
-  clients: Array<Record<string, string | number>>;
-  leads: Array<Record<string, string | number>>;
+  clients: Array<Record<string, unknown>>;
+  leads: Array<Record<string, unknown>>;
   uploadedText?: string;
 }): string {
   const today = new Date().toISOString().split("T")[0];
@@ -140,7 +143,7 @@ function buildContext(context: {
     str += "No clients yet.\n";
   } else {
     context.clients.forEach((c) => {
-      str += `- ${c.name} [id:${c.id}] | Phase: ${c.phase} | Status: ${c.status} | Tendency: ${c.tendencyType || "unknown"} | Start Weight: ${c.startingWeight} | Current Weight: ${c.currentWeight} | Lost: ${c.totalLost} | Last Weigh-in: ${c.lastCheckInDate || "never"} | Notes: ${c.notes || "none"}\n`;
+      str += `- ${c.name} [id:${c.id}] | Phase: ${c.phase} | Status: ${c.status} | Tendency: ${c.tendencyType || "unknown"} | Start Weight: ${c.startingWeight} | Current Weight: ${c.currentWeight} | Target Weight: ${c.targetWeight} | Lost: ${c.totalLost} | Last Weigh-in: ${c.lastWeighInDate || "never"} | Notes: ${c.notes || "none"}\n`;
     });
   }
 

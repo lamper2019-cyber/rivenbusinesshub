@@ -1,35 +1,159 @@
 import { openDB as idbOpen, IDBPDatabase } from "idb";
-import type { Client, Lead, CheckIn, FileAttachment } from "./types";
+import type { Client, Lead } from "./types";
 
 const DB_NAME = "riven-crm";
-const DB_VERSION = 1;
+const DB_VERSION = 2;
 
 function getDB(): Promise<IDBPDatabase> {
   return idbOpen(DB_NAME, DB_VERSION, {
-    upgrade(db) {
+    upgrade(db, oldVersion) {
+      // Delete old stores on upgrade from v1
+      if (oldVersion < 2) {
+        const storeNames = Array.from(db.objectStoreNames);
+        for (const name of storeNames) {
+          db.deleteObjectStore(name);
+        }
+      }
+
       if (!db.objectStoreNames.contains("clients")) {
         const clients = db.createObjectStore("clients", { keyPath: "id" });
         clients.createIndex("name", "name");
         clients.createIndex("status", "status");
-        clients.createIndex("lastCheckInDate", "lastCheckInDate");
       }
       if (!db.objectStoreNames.contains("leads")) {
         const leads = db.createObjectStore("leads", { keyPath: "id" });
         leads.createIndex("name", "name");
         leads.createIndex("status", "status");
-        leads.createIndex("followUpDate", "followUpDate");
-      }
-      if (!db.objectStoreNames.contains("checkins")) {
-        const checkins = db.createObjectStore("checkins", { keyPath: "id" });
-        checkins.createIndex("clientId", "clientId");
-        checkins.createIndex("date", "date");
-      }
-      if (!db.objectStoreNames.contains("files")) {
-        const files = db.createObjectStore("files", { keyPath: "id" });
-        files.createIndex("clientId", "clientId");
       }
     },
   });
+}
+
+// --- Seed Data ---
+const SEED_CLIENTS: Client[] = [
+  {
+    id: "seed-tracey",
+    name: "Tracey",
+    phase: 1,
+    startDate: "2025-02-25",
+    startingWeight: 167,
+    currentWeight: 167,
+    targetWeight: Math.round(167 * 0.9 * 10) / 10,
+    totalLost: 0,
+    tendencyType: "Obliger",
+    lastWeighInDate: "2025-02-25",
+    weighIns: [{ date: "2025-02-25", weight: 167 }],
+    status: "active",
+    notes: "",
+    createdAt: "2025-02-25T00:00:00.000Z",
+    updatedAt: "2025-02-25T00:00:00.000Z",
+  },
+  {
+    id: "seed-danielle-d",
+    name: "Danielle D.",
+    phase: 2,
+    startDate: "2025-02-01",
+    startingWeight: 208,
+    currentWeight: 202.4,
+    targetWeight: Math.round(208 * 0.9 * 10) / 10,
+    totalLost: 5.6,
+    tendencyType: "Obliger",
+    lastWeighInDate: "2025-03-05",
+    weighIns: [
+      { date: "2025-02-01", weight: 208 },
+      { date: "2025-03-05", weight: 202.4 },
+    ],
+    status: "active",
+    notes: "",
+    createdAt: "2025-02-01T00:00:00.000Z",
+    updatedAt: "2025-03-05T00:00:00.000Z",
+  },
+  {
+    id: "seed-denise",
+    name: "Denise Rhodes Batten",
+    phase: 1,
+    startDate: "2025-03-01",
+    startingWeight: 211,
+    currentWeight: 211,
+    targetWeight: Math.round(211 * 0.9 * 10) / 10,
+    totalLost: 0,
+    tendencyType: "",
+    lastWeighInDate: "2025-03-05",
+    weighIns: [{ date: "2025-03-05", weight: 211 }],
+    status: "active",
+    notes: "",
+    createdAt: "2025-03-01T00:00:00.000Z",
+    updatedAt: "2025-03-05T00:00:00.000Z",
+  },
+  {
+    id: "seed-jazmine",
+    name: "Jazmine Curry",
+    phase: 2,
+    startDate: "2025-02-01",
+    startingWeight: 234.4,
+    currentWeight: 230,
+    targetWeight: Math.round(234.4 * 0.9 * 10) / 10,
+    totalLost: 4.4,
+    tendencyType: "",
+    lastWeighInDate: "2025-03-05",
+    weighIns: [
+      { date: "2025-02-01", weight: 234.4 },
+      { date: "2025-03-05", weight: 230 },
+    ],
+    status: "active",
+    notes: "",
+    createdAt: "2025-02-01T00:00:00.000Z",
+    updatedAt: "2025-03-05T00:00:00.000Z",
+  },
+  {
+    id: "seed-jessica",
+    name: "Jessica Jones",
+    phase: 1,
+    startDate: "2025-02-15",
+    startingWeight: 308,
+    currentWeight: 308,
+    targetWeight: Math.round(308 * 0.9 * 10) / 10,
+    totalLost: 0,
+    tendencyType: "Obliger",
+    lastWeighInDate: "2025-03-02",
+    weighIns: [{ date: "2025-03-02", weight: 308 }],
+    status: "active",
+    notes: "",
+    createdAt: "2025-02-15T00:00:00.000Z",
+    updatedAt: "2025-03-02T00:00:00.000Z",
+  },
+  {
+    id: "seed-rora",
+    name: "Rora Jackson",
+    phase: 1,
+    startDate: "2025-02-01",
+    startingWeight: 211,
+    currentWeight: 202,
+    targetWeight: Math.round(211 * 0.9 * 10) / 10,
+    totalLost: 9,
+    tendencyType: "",
+    lastWeighInDate: "2025-03-05",
+    weighIns: [
+      { date: "2025-02-01", weight: 211 },
+      { date: "2025-03-05", weight: 202 },
+    ],
+    status: "active",
+    notes: "",
+    createdAt: "2025-02-01T00:00:00.000Z",
+    updatedAt: "2025-03-05T00:00:00.000Z",
+  },
+];
+
+export async function seedIfEmpty(): Promise<void> {
+  const db = await getDB();
+  const count = await db.count("clients");
+  if (count === 0) {
+    const tx = db.transaction("clients", "readwrite");
+    for (const client of SEED_CLIENTS) {
+      await tx.store.put(client);
+    }
+    await tx.done;
+  }
 }
 
 // --- Clients ---
@@ -47,6 +171,13 @@ export async function getClient(id: string): Promise<Client | undefined> {
 export async function putClient(client: Client): Promise<void> {
   const db = await getDB();
   client.updatedAt = new Date().toISOString();
+  client.totalLost = Math.round((client.startingWeight - client.currentWeight) * 10) / 10;
+  if (!client.targetWeight) {
+    client.targetWeight = Math.round(client.startingWeight * 0.9 * 10) / 10;
+  }
+  if (!client.weighIns) {
+    client.weighIns = [];
+  }
   await db.put("clients", client);
 }
 
@@ -76,86 +207,4 @@ export async function putLead(lead: Lead): Promise<void> {
 export async function deleteLead(id: string): Promise<void> {
   const db = await getDB();
   await db.delete("leads", id);
-}
-
-// --- Check-ins ---
-export async function getAllCheckIns(limit = 50): Promise<CheckIn[]> {
-  const db = await getDB();
-  const all = await db.getAll("checkins");
-  return (all as CheckIn[])
-    .sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime())
-    .slice(0, limit);
-}
-
-export async function getCheckInsForClient(clientId: string): Promise<CheckIn[]> {
-  const db = await getDB();
-  const all = await db.getAllFromIndex("checkins", "clientId", clientId);
-  return (all as CheckIn[]).sort(
-    (a, b) => new Date(b.date).getTime() - new Date(a.date).getTime()
-  );
-}
-
-export async function putCheckIn(checkin: CheckIn): Promise<void> {
-  const db = await getDB();
-  await db.put("checkins", checkin);
-
-  // Update parent client's lastCheckInDate and currentWeight
-  const client = await db.get("clients", checkin.clientId) as Client | undefined;
-  if (client) {
-    client.lastCheckInDate = checkin.date;
-    client.currentWeight = checkin.currentWeight;
-    client.totalLost = client.startingWeight - checkin.currentWeight;
-    client.updatedAt = new Date().toISOString();
-    await db.put("clients", client);
-  }
-}
-
-// --- Files ---
-export async function getFilesForClient(clientId: string): Promise<FileAttachment[]> {
-  const db = await getDB();
-  const all = await db.getAllFromIndex("files", "clientId", clientId);
-  return (all as FileAttachment[]).sort(
-    (a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
-  );
-}
-
-export async function putFile(file: FileAttachment): Promise<void> {
-  const db = await getDB();
-  await db.put("files", file);
-}
-
-export async function deleteFile(id: string): Promise<void> {
-  const db = await getDB();
-  await db.delete("files", id);
-}
-
-// --- Utility ---
-export async function clearAllData(): Promise<void> {
-  const db = await getDB();
-  await db.clear("clients");
-  await db.clear("leads");
-  await db.clear("checkins");
-  await db.clear("files");
-}
-
-export async function getUnsyncedClients(): Promise<Client[]> {
-  const all = await getAllClients();
-  return all.filter((c) => !c.syncedAt || c.updatedAt > c.syncedAt);
-}
-
-export async function getUnsyncedLeads(): Promise<Lead[]> {
-  const all = await getAllLeads();
-  return all.filter((l) => !l.syncedAt || l.updatedAt > l.syncedAt);
-}
-
-export async function markSynced(
-  store: "clients" | "leads" | "checkins",
-  id: string
-): Promise<void> {
-  const db = await getDB();
-  const record = await db.get(store, id);
-  if (record) {
-    record.syncedAt = new Date().toISOString();
-    await db.put(store, record);
-  }
 }

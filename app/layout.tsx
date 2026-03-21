@@ -33,7 +33,7 @@ export default function RootLayout({
 }) {
   return (
     <html lang="en">
-      <body className="bg-riven-bg text-white antialiased">
+      <body className="bg-riven-bg text-white antialiased font-body">
         <ServiceWorker />
         <LayoutShell>{children}</LayoutShell>
       </body>

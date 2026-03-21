@@ -3,7 +3,6 @@ import type { TendencyType } from "./types";
 interface TendencyInfo {
   tips: string[];
   checkInApproach: string;
-  emoji: string;
 }
 
 export const TENDENCY_TIPS: Record<TendencyType, TendencyInfo> = {
@@ -16,7 +15,6 @@ export const TENDENCY_TIPS: Record<TendencyType, TendencyInfo> = {
     ],
     checkInApproach:
       "Be their accountability partner. They need someone counting on them.",
-    emoji: "🤝",
   },
   Upholder: {
     tips: [
@@ -27,7 +25,6 @@ export const TENDENCY_TIPS: Record<TendencyType, TendencyInfo> = {
     ],
     checkInApproach:
       "Keep it structured. They appreciate clear expectations and data.",
-    emoji: "📋",
   },
   Questioner: {
     tips: [
@@ -38,7 +35,6 @@ export const TENDENCY_TIPS: Record<TendencyType, TendencyInfo> = {
     ],
     checkInApproach:
       "Lead with data and evidence. Show them the why behind every change.",
-    emoji: "🔍",
   },
   Rebel: {
     tips: [
@@ -49,7 +45,6 @@ export const TENDENCY_TIPS: Record<TendencyType, TendencyInfo> = {
     ],
     checkInApproach:
       "Give them freedom. Frame progress as their choice, not your instruction.",
-    emoji: "⚡",
   },
 };
 
@@ -58,11 +53,21 @@ export function getRandomTip(tendency: TendencyType): string {
   return info.tips[Math.floor(Math.random() * info.tips.length)];
 }
 
-export function needsCheckIn(lastCheckInDate: string, daysThreshold = 7): boolean {
-  if (!lastCheckInDate) return true;
-  const last = new Date(lastCheckInDate);
+export function getCoachInsight(tendency: TendencyType): string {
+  return TENDENCY_TIPS[tendency].checkInApproach;
+}
+
+export function needsWeighIn(lastWeighInDate: string, daysThreshold = 7): boolean {
+  if (!lastWeighInDate) return true;
+  const last = new Date(lastWeighInDate + "T00:00:00");
   const now = new Date();
   const diffMs = now.getTime() - last.getTime();
   const diffDays = diffMs / (1000 * 60 * 60 * 24);
   return diffDays >= daysThreshold;
+}
+
+export function formatWeighInDate(dateStr: string): string {
+  if (!dateStr) return "No weigh-ins yet";
+  const date = new Date(dateStr + "T00:00:00");
+  return date.toLocaleDateString("en-US", { month: "short", day: "numeric" });
 }

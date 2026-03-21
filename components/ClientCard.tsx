@@ -2,93 +2,90 @@
 
 import Link from "next/link";
 import type { Client } from "@/lib/types";
-import { needsCheckIn } from "@/lib/tips";
+import { formatWeighInDate } from "@/lib/tips";
 
-const statusColors: Record<string, string> = {
+const statusDot: Record<string, string> = {
   active: "bg-green-500",
   paused: "bg-yellow-500",
-  completed: "bg-riven-muted",
-};
-
-const tendencyEmoji: Record<string, string> = {
-  Obliger: "🤝",
-  Upholder: "📋",
-  Questioner: "🔍",
-  Rebel: "⚡",
+  completed: "bg-gray-500",
 };
 
 export default function ClientCard({ client }: { client: Client }) {
-  const overdue = needsCheckIn(client.lastCheckInDate);
-  const progress =
-    client.startingWeight > 0
-      ? Math.min(
-          100,
-          ((client.startingWeight - client.currentWeight) /
-            Math.max(client.startingWeight * 0.1, 1)) *
-            100
-        )
+  const target = client.targetWeight || client.startingWeight * 0.9;
+  const weightToLose = client.startingWeight - target;
+  const lostSoFar = client.startingWeight - client.currentWeight;
+  const lbsToGo = Math.max(0, Math.round((client.currentWeight - target) * 10) / 10);
+  const journeyPct =
+    weightToLose > 0
+      ? Math.max(0, Math.min(100, Math.round((lostSoFar / weightToLose) * 100)))
       : 0;
 
   return (
-    <Link href={`/clients/${client.id}`}>
-      <div
-        className={`bg-riven-card border rounded-xl p-4 hover:border-riven-gold/50 transition-all cursor-pointer ${
-          overdue ? "border-riven-gold/60" : "border-riven-border"
-        }`}
-      >
-        <div className="flex items-start justify-between mb-3">
-          <div className="flex items-center gap-2">
-            <h3 className="font-semibold text-white">{client.name}</h3>
-            {client.tendencyType && (
-              <span className="text-sm" title={client.tendencyType}>
-                {tendencyEmoji[client.tendencyType] || ""}
-              </span>
-            )}
-          </div>
-          <div className="flex items-center gap-2">
-            <span className="text-xs text-riven-muted px-2 py-0.5 bg-white/5 rounded">
-              Phase {client.phase}
-            </span>
-            <span
-              className={`w-2 h-2 rounded-full ${statusColors[client.status] || "bg-riven-muted"}`}
-            />
-          </div>
+    <div className="bg-riven-card rounded-2xl p-5 hover:bg-riven-surface transition-all animate-fade-in">
+      {/* Header */}
+      <div className="flex items-start justify-between mb-4">
+        <div>
+          <h3 className="font-headline font-bold text-white text-lg leading-tight">
+            {client.name}
+          </h3>
         </div>
-
-        {client.startingWeight > 0 && (
-          <div className="mb-3">
-            <div className="flex justify-between text-xs text-riven-muted mb-1">
-              <span>
-                {client.currentWeight > 0
-                  ? `${client.currentWeight} lbs`
-                  : "—"}
-              </span>
-              <span>
-                {client.totalLost > 0
-                  ? `${client.totalLost.toFixed(1)} lbs lost`
-                  : "—"}
-              </span>
-            </div>
-            <div className="w-full h-1.5 bg-riven-border rounded-full overflow-hidden">
-              <div
-                className="h-full bg-riven-gold rounded-full transition-all"
-                style={{ width: `${Math.max(0, Math.min(100, progress))}%` }}
-              />
-            </div>
-          </div>
-        )}
-
-        <div className="flex items-center justify-between text-xs text-riven-muted">
-          <span>
-            {client.lastCheckInDate
-              ? `Last weigh-in: ${new Date(client.lastCheckInDate).toLocaleDateString()}`
-              : "No weigh-ins yet"}
+        <div className="flex items-center gap-2">
+          <span className="text-[10px] font-semibold tracking-wider text-riven-muted/70 uppercase bg-white/5 px-2 py-1 rounded">
+            Phase {client.phase}
           </span>
-          {overdue && (
-            <span className="text-riven-gold font-medium">Needs weigh-in</span>
-          )}
+          <span
+            className={`w-2.5 h-2.5 rounded-full ${statusDot[client.status] || "bg-gray-500"}`}
+          />
         </div>
       </div>
-    </Link>
+
+      {/* Weight Boxes */}
+      <div className="grid grid-cols-2 gap-3 mb-4">
+        <div className="bg-riven-bg rounded-xl p-3 text-center">
+          <p className="text-[10px] text-riven-muted uppercase tracking-wider mb-1">Current</p>
+          <p className="text-xl font-headline font-bold text-white">
+            {client.currentWeight}
+            <span className="text-xs font-normal text-riven-muted ml-1">lbs</span>
+          </p>
+        </div>
+        <div className="bg-riven-bg rounded-xl p-3 text-center">
+          <p className="text-[10px] text-riven-muted uppercase tracking-wider mb-1">Target</p>
+          <p className="text-xl font-headline font-bold text-white">
+            {Math.round(target * 10) / 10}
+            <span className="text-xs font-normal text-riven-muted ml-1">lbs</span>
+          </p>
+        </div>
+      </div>
+
+      {/* Progress Section */}
+      <div className="mb-3">
+        <div className="flex justify-between items-center mb-2">
+          <span className="text-xs text-riven-muted">
+            {lbsToGo > 0 ? `${lbsToGo} lbs to go` : "Goal reached!"}
+          </span>
+          <span className="text-xs font-semibold text-riven-gold">{journeyPct}% Journey</span>
+        </div>
+        <div className="w-full h-3 bg-riven-bg rounded-full overflow-hidden">
+          <div
+            className="h-full rounded-full gold-gradient transition-all duration-500"
+            style={{ width: `${journeyPct}%` }}
+          />
+        </div>
+      </div>
+
+      {/* Last Weigh-in */}
+      <p className="text-xs text-riven-muted mb-4">
+        Last weigh-in:{" "}
+        <span className="text-white/70">{formatWeighInDate(client.lastWeighInDate)}</span>
+      </p>
+
+      {/* Quick View Button */}
+      <Link
+        href={`/clients/${client.id}`}
+        className="block w-full text-center text-sm font-medium text-riven-gold hover:text-riven-gold-light py-2 rounded-xl bg-riven-gold/5 hover:bg-riven-gold/10 transition-all"
+      >
+        Quick View &rarr;
+      </Link>
+    </div>
   );
 }

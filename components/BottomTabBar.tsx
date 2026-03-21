@@ -4,16 +4,16 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 
 const tabs = [
-  { href: "/clients", label: "Clients", icon: "👤" },
-  { href: "/leads", label: "Leads", icon: "🎯" },
-  { href: "/chat", label: "Chat", icon: "💬" },
+  { href: "/clients", label: "Clients", icon: "group" },
+  { href: "/leads", label: "Leads", icon: "target" },
+  { href: "/chat", label: "Chat", icon: "chat" },
 ];
 
 export default function BottomTabBar() {
   const pathname = usePathname();
 
   return (
-    <nav className="fixed bottom-0 left-0 right-0 z-50 bg-riven-card border-t border-riven-border md:hidden safe-bottom">
+    <nav className="fixed bottom-0 left-0 right-0 z-50 bg-riven-card md:hidden safe-bottom">
       <div className="flex h-16">
         {tabs.map((tab) => {
           const isActive =
@@ -28,7 +28,7 @@ export default function BottomTabBar() {
                   : "text-riven-muted hover:text-white"
               }`}
             >
-              <span className="text-xl">{tab.icon}</span>
+              <span className="material-symbols-outlined text-xl">{tab.icon}</span>
               <span className="text-[10px] font-medium">{tab.label}</span>
             </Link>
           );
