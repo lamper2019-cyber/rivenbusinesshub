@@ -117,6 +117,8 @@ export default function ChatPage() {
               (String(action.fields.tendencyType || "") as Client["tendencyType"]) || "",
             lastWeighInDate: String(action.fields.lastWeighInDate || new Date().toISOString().split("T")[0]),
             weighIns: startWeight ? [{ date: new Date().toISOString().split("T")[0], weight: curWeight }] : [],
+            steps: 0,
+            finalSixNos: { noSugaryDrinks: false, noFriedFoods: false, noFastFood: false, noProcessedCarbs: false, noCandyBetweenMeals: false, noAlcoholMonThu: false },
             status: (String(action.fields.status || "active")) as Client["status"],
             notes: String(action.fields.notes || ""),
             createdAt: new Date().toISOString(),

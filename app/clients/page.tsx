@@ -19,6 +19,8 @@ const emptyClient = (): Client => ({
   tendencyType: "",
   lastWeighInDate: "",
   weighIns: [],
+  steps: 0,
+  finalSixNos: { noSugaryDrinks: false, noFriedFoods: false, noFastFood: false, noProcessedCarbs: false, noCandyBetweenMeals: false, noAlcoholMonThu: false },
   status: "active",
   notes: "",
   createdAt: new Date().toISOString(),

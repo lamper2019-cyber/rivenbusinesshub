@@ -1,14 +1,23 @@
 import { openDB as idbOpen, IDBPDatabase } from "idb";
-import type { Client, Lead } from "./types";
+import type { Client, Lead, FinalSixNos } from "./types";
 
 const DB_NAME = "riven-crm";
-const DB_VERSION = 2;
+const DB_VERSION = 3;
+
+const DEFAULT_NOS: FinalSixNos = {
+  noSugaryDrinks: false,
+  noFriedFoods: false,
+  noFastFood: false,
+  noProcessedCarbs: false,
+  noCandyBetweenMeals: false,
+  noAlcoholMonThu: false,
+};
 
 function getDB(): Promise<IDBPDatabase> {
   return idbOpen(DB_NAME, DB_VERSION, {
     upgrade(db, oldVersion) {
-      // Delete old stores on upgrade from v1
-      if (oldVersion < 2) {
+      // Delete old stores on upgrade from v1 or v2
+      if (oldVersion < 3) {
         const storeNames = Array.from(db.objectStoreNames);
         for (const name of storeNames) {
           db.deleteObjectStore(name);
@@ -43,6 +52,8 @@ const SEED_CLIENTS: Client[] = [
     tendencyType: "Obliger",
     lastWeighInDate: "2025-02-25",
     weighIns: [{ date: "2025-02-25", weight: 167 }],
+    steps: 0,
+    finalSixNos: { ...DEFAULT_NOS },
     status: "active",
     notes: "",
     createdAt: "2025-02-25T00:00:00.000Z",
@@ -63,6 +74,8 @@ const SEED_CLIENTS: Client[] = [
       { date: "2025-02-01", weight: 208 },
       { date: "2025-03-05", weight: 202.4 },
     ],
+    steps: 0,
+    finalSixNos: { ...DEFAULT_NOS },
     status: "active",
     notes: "",
     createdAt: "2025-02-01T00:00:00.000Z",
@@ -80,6 +93,8 @@ const SEED_CLIENTS: Client[] = [
     tendencyType: "",
     lastWeighInDate: "2025-03-05",
     weighIns: [{ date: "2025-03-05", weight: 211 }],
+    steps: 0,
+    finalSixNos: { ...DEFAULT_NOS },
     status: "active",
     notes: "",
     createdAt: "2025-03-01T00:00:00.000Z",
@@ -100,6 +115,8 @@ const SEED_CLIENTS: Client[] = [
       { date: "2025-02-01", weight: 234.4 },
       { date: "2025-03-05", weight: 230 },
     ],
+    steps: 0,
+    finalSixNos: { ...DEFAULT_NOS },
     status: "active",
     notes: "",
     createdAt: "2025-02-01T00:00:00.000Z",
@@ -117,6 +134,8 @@ const SEED_CLIENTS: Client[] = [
     tendencyType: "Obliger",
     lastWeighInDate: "2025-03-02",
     weighIns: [{ date: "2025-03-02", weight: 308 }],
+    steps: 0,
+    finalSixNos: { ...DEFAULT_NOS },
     status: "active",
     notes: "",
     createdAt: "2025-02-15T00:00:00.000Z",
@@ -137,6 +156,8 @@ const SEED_CLIENTS: Client[] = [
       { date: "2025-02-01", weight: 211 },
       { date: "2025-03-05", weight: 202 },
     ],
+    steps: 0,
+    finalSixNos: { ...DEFAULT_NOS },
     status: "active",
     notes: "",
     createdAt: "2025-02-01T00:00:00.000Z",
@@ -177,6 +198,12 @@ export async function putClient(client: Client): Promise<void> {
   }
   if (!client.weighIns) {
     client.weighIns = [];
+  }
+  if (client.steps === undefined) {
+    client.steps = 0;
+  }
+  if (!client.finalSixNos) {
+    client.finalSixNos = { ...DEFAULT_NOS };
   }
   await db.put("clients", client);
 }
