@@ -2,8 +2,8 @@
 
 import { useState, useEffect, useCallback } from "react";
 import { useParams, useRouter } from "next/navigation";
-import type { Client, FinalSixNos, FINAL_SIX_NOS_LABELS } from "@/lib/types";
-import { FINAL_SIX_NOS_LABELS as NOS_LABELS } from "@/lib/types";
+import type { Client, FinalSixNos, PhaseChecklist } from "@/lib/types";
+import { FINAL_SIX_NOS_LABELS as NOS_LABELS, PHASE_CHECKLIST_DATA, DEFAULT_PHASE_CHECKLIST } from "@/lib/types";
 import { getClient, putClient, deleteClient } from "@/lib/db";
 import { getCoachInsight, formatWeighInDate } from "@/lib/tips";
 
@@ -373,6 +373,98 @@ export default function ClientProfilePage() {
               }}
             />
           </div>
+        </div>
+      </div>
+
+      {/* Phase Roadmap */}
+      <div className="bg-riven-card rounded-2xl p-5 mb-6">
+        <h3 className="font-headline font-semibold text-white text-sm mb-5 flex items-center gap-2">
+          <span className="material-symbols-outlined text-riven-gold text-lg">route</span>
+          Phase Roadmap
+        </h3>
+        <div className="space-y-6">
+          {PHASE_CHECKLIST_DATA.map((phase) => {
+            const isCurrentPhase = client.phase === phase.phase;
+            const allChecked = phase.items.every(
+              (item) => (client.phaseChecklist || DEFAULT_PHASE_CHECKLIST)[item.key]
+            );
+            const checkedCount = phase.items.filter(
+              (item) => (client.phaseChecklist || DEFAULT_PHASE_CHECKLIST)[item.key]
+            ).length;
+
+            return (
+              <div key={phase.phase}>
+                <div className="flex items-center gap-2 mb-3">
+                  <div
+                    className={`w-7 h-7 rounded-full flex items-center justify-center text-xs font-bold ${
+                      allChecked
+                        ? "bg-green-500/20 text-green-400"
+                        : isCurrentPhase
+                        ? "bg-riven-gold/20 text-riven-gold"
+                        : "bg-white/5 text-riven-muted"
+                    }`}
+                  >
+                    {allChecked ? (
+                      <span className="material-symbols-outlined text-sm">check</span>
+                    ) : (
+                      phase.phase
+                    )}
+                  </div>
+                  <div>
+                    <span
+                      className={`text-sm font-semibold ${
+                        isCurrentPhase ? "text-riven-gold" : allChecked ? "text-green-400" : "text-white"
+                      }`}
+                    >
+                      {phase.title}
+                    </span>
+                    <span className="text-xs text-riven-muted ml-2">
+                      {phase.subtitle}
+                    </span>
+                  </div>
+                  <span className="text-[10px] text-riven-muted ml-auto">
+                    {checkedCount}/{phase.items.length}
+                  </span>
+                </div>
+                <div className="space-y-1.5 ml-3.5 pl-5 border-l border-riven-border">
+                  {phase.items.map((item) => {
+                    const checked = (client.phaseChecklist || DEFAULT_PHASE_CHECKLIST)[item.key];
+                    return (
+                      <label
+                        key={item.key}
+                        className={`flex items-start gap-3 p-2.5 rounded-lg cursor-pointer transition-all ${
+                          checked ? "bg-green-500/5" : "hover:bg-white/3"
+                        }`}
+                      >
+                        <input
+                          type="checkbox"
+                          checked={checked}
+                          onChange={async () => {
+                            const updatedChecklist = {
+                              ...(client.phaseChecklist || DEFAULT_PHASE_CHECKLIST),
+                              [item.key]: !checked,
+                            };
+                            const updated = { ...client, phaseChecklist: updatedChecklist };
+                            await putClient(updated);
+                            setClient(updated);
+                            setForm(updated);
+                          }}
+                          className="mt-0.5 w-4 h-4 rounded border-2 border-riven-border bg-transparent checked:bg-riven-gold checked:border-riven-gold text-black focus:ring-riven-gold focus:ring-offset-0 cursor-pointer flex-shrink-0"
+                        />
+                        <span
+                          className={`text-sm leading-snug ${
+                            checked ? "text-green-400/80 line-through" : "text-white/80"
+                          }`}
+                        >
+                          {item.label}
+                        </span>
+                      </label>
+                    );
+                  })}
+                </div>
+              </div>
+            );
+          })}
         </div>
       </div>
 

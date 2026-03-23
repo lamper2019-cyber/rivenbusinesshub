@@ -1,8 +1,9 @@
 import { openDB as idbOpen, IDBPDatabase } from "idb";
-import type { Client, Lead, FinalSixNos } from "./types";
+import type { Client, Lead, FinalSixNos, PhaseChecklist } from "./types";
+import { DEFAULT_PHASE_CHECKLIST } from "./types";
 
 const DB_NAME = "riven-crm";
-const DB_VERSION = 3;
+const DB_VERSION = 4;
 
 const DEFAULT_NOS: FinalSixNos = {
   noSugaryDrinks: false,
@@ -17,7 +18,7 @@ function getDB(): Promise<IDBPDatabase> {
   return idbOpen(DB_NAME, DB_VERSION, {
     upgrade(db, oldVersion) {
       // Delete old stores on upgrade from v1 or v2
-      if (oldVersion < 3) {
+      if (oldVersion < 4) {
         const storeNames = Array.from(db.objectStoreNames);
         for (const name of storeNames) {
           db.deleteObjectStore(name);
@@ -54,6 +55,7 @@ const SEED_CLIENTS: Client[] = [
     weighIns: [{ date: "2025-02-25", weight: 167 }],
     steps: 0,
     finalSixNos: { ...DEFAULT_NOS },
+    phaseChecklist: { ...DEFAULT_PHASE_CHECKLIST },
     status: "active",
     notes: "",
     createdAt: "2025-02-25T00:00:00.000Z",
@@ -76,6 +78,7 @@ const SEED_CLIENTS: Client[] = [
     ],
     steps: 0,
     finalSixNos: { ...DEFAULT_NOS },
+    phaseChecklist: { ...DEFAULT_PHASE_CHECKLIST },
     status: "active",
     notes: "",
     createdAt: "2025-02-01T00:00:00.000Z",
@@ -95,6 +98,7 @@ const SEED_CLIENTS: Client[] = [
     weighIns: [{ date: "2025-03-05", weight: 211 }],
     steps: 0,
     finalSixNos: { ...DEFAULT_NOS },
+    phaseChecklist: { ...DEFAULT_PHASE_CHECKLIST },
     status: "active",
     notes: "",
     createdAt: "2025-03-01T00:00:00.000Z",
@@ -117,6 +121,7 @@ const SEED_CLIENTS: Client[] = [
     ],
     steps: 0,
     finalSixNos: { ...DEFAULT_NOS },
+    phaseChecklist: { ...DEFAULT_PHASE_CHECKLIST },
     status: "active",
     notes: "",
     createdAt: "2025-02-01T00:00:00.000Z",
@@ -136,6 +141,7 @@ const SEED_CLIENTS: Client[] = [
     weighIns: [{ date: "2025-03-02", weight: 308 }],
     steps: 0,
     finalSixNos: { ...DEFAULT_NOS },
+    phaseChecklist: { ...DEFAULT_PHASE_CHECKLIST },
     status: "active",
     notes: "",
     createdAt: "2025-02-15T00:00:00.000Z",
@@ -158,6 +164,7 @@ const SEED_CLIENTS: Client[] = [
     ],
     steps: 0,
     finalSixNos: { ...DEFAULT_NOS },
+    phaseChecklist: { ...DEFAULT_PHASE_CHECKLIST },
     status: "active",
     notes: "",
     createdAt: "2025-02-01T00:00:00.000Z",
@@ -204,6 +211,9 @@ export async function putClient(client: Client): Promise<void> {
   }
   if (!client.finalSixNos) {
     client.finalSixNos = { ...DEFAULT_NOS };
+  }
+  if (!client.phaseChecklist) {
+    client.phaseChecklist = { ...DEFAULT_PHASE_CHECKLIST };
   }
   await db.put("clients", client);
 }

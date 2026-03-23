@@ -119,6 +119,7 @@ export default function ChatPage() {
             weighIns: startWeight ? [{ date: new Date().toISOString().split("T")[0], weight: curWeight }] : [],
             steps: 0,
             finalSixNos: { noSugaryDrinks: false, noFriedFoods: false, noFastFood: false, noProcessedCarbs: false, noCandyBetweenMeals: false, noAlcoholMonThu: false },
+            phaseChecklist: { p1_protein40g: false, p1_steps7000: false, p1_eatWhatYouWant: false, p2_steps9000: false, p2_first3Nos: false, p2_glucomannan: false, p3_steps11000: false, p3_all6Nos: false },
             status: (String(action.fields.status || "active")) as Client["status"],
             notes: String(action.fields.notes || ""),
             createdAt: new Date().toISOString(),
