@@ -144,6 +144,25 @@ export default function ClientProfilePage() {
         </div>
       </div>
 
+      {/* Last Weigh-in Date Picker */}
+      <div className="bg-riven-card rounded-2xl p-4 mb-6 flex items-center justify-between">
+        <div className="flex items-center gap-2">
+          <span className="material-symbols-outlined text-riven-gold text-lg">event</span>
+          <span className="text-sm font-medium text-white">Last Weigh-in</span>
+        </div>
+        <input
+          type="date"
+          value={client.lastWeighInDate || ""}
+          onChange={async (e) => {
+            const updated = { ...client, lastWeighInDate: e.target.value };
+            await putClient(updated);
+            setClient(updated);
+            setForm(updated);
+          }}
+          className="bg-riven-bg rounded-xl px-3 py-2 text-sm text-white focus:ring-1 focus:ring-riven-gold outline-none cursor-pointer"
+        />
+      </div>
+
       {/* Core Weight Goal Hero Card */}
       <div className="bg-riven-card rounded-2xl p-6 mb-6 relative overflow-hidden">
         <div className="absolute top-0 right-0 w-32 h-32 bg-riven-gold/5 rounded-full blur-3xl -translate-y-8 translate-x-8" />
@@ -543,17 +562,9 @@ export default function ClientProfilePage() {
             </div>
             <div>
               <p className="text-xs text-riven-muted">Last Weigh-in</p>
-              <input
-                type="date"
-                value={client.lastWeighInDate || ""}
-                onChange={async (e) => {
-                  const updated = { ...client, lastWeighInDate: e.target.value };
-                  await putClient(updated);
-                  setClient(updated);
-                  setForm(updated);
-                }}
-                className="w-full bg-riven-bg rounded-lg px-2 py-1.5 text-sm text-white focus:ring-1 focus:ring-riven-gold outline-none cursor-pointer"
-              />
+              <p className="text-sm text-white">
+                {formatWeighInDate(client.lastWeighInDate)}
+              </p>
             </div>
             <div>
               <p className="text-xs text-riven-muted">Tendency Type</p>
