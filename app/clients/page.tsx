@@ -19,8 +19,6 @@ const emptyClient = (): Client => ({
   tendencyType: "",
   lastWeighInDate: "",
   weighIns: [],
-  steps: 0,
-  finalSixNos: { noSugaryDrinks: false, noFriedFoods: false, noFastFood: false, noProcessedCarbs: false, noCandyBetweenMeals: false, noAlcoholMonThu: false },
   phaseChecklist: { p1_protein40g: false, p1_steps7000: false, p1_eatWhatYouWant: false, p2_steps9000: false, p2_first3Nos: false, p2_glucomannan: false, p3_steps11000: false, p3_all6Nos: false },
   status: "active",
   notes: "",

@@ -5,24 +5,6 @@ export interface WeighIn {
   weight: number;
 }
 
-export interface FinalSixNos {
-  noSugaryDrinks: boolean;
-  noFriedFoods: boolean;
-  noFastFood: boolean;
-  noProcessedCarbs: boolean;
-  noCandyBetweenMeals: boolean;
-  noAlcoholMonThu: boolean;
-}
-
-export const FINAL_SIX_NOS_LABELS: Record<keyof FinalSixNos, string> = {
-  noSugaryDrinks: "No sugary drinks",
-  noFriedFoods: "No fried foods more than 1x/week",
-  noFastFood: "No fast food more than 1x/week",
-  noProcessedCarbs: "No ultra-processed carbs (white bread, pasta, chips, crackers, cookies) more than 1x/week",
-  noCandyBetweenMeals: "No candy/sweets between meals",
-  noAlcoholMonThu: "No alcohol Mon\u2013Thu",
-};
-
 export interface PhaseChecklist {
   // Phase 1 — The Foundation
   p1_protein40g: boolean;
@@ -59,7 +41,7 @@ export const PHASE_CHECKLIST_DATA: {
     subtitle: "The Tightening",
     items: [
       { key: "p2_steps9000", label: "Steps up to 9,000" },
-      { key: "p2_first3Nos", label: "First 3 NOs (sugary drinks, fried food, ultra-processed snacks) limited to max 2x/week" },
+      { key: "p2_first3Nos", label: "First 3 NOs (no sugary drinks, no fried foods more than 1x/week, no ultra-processed snacks) limited to max 2x/week" },
       { key: "p2_glucomannan", label: "Glucomannan before dinner" },
     ],
   },
@@ -69,7 +51,7 @@ export const PHASE_CHECKLIST_DATA: {
     subtitle: "The Lock In",
     items: [
       { key: "p3_steps11000", label: "Steps up to 11,000" },
-      { key: "p3_all6Nos", label: "All 6 NOs locked in to once per week max" },
+      { key: "p3_all6Nos", label: "All 6 NOs locked in to once per week max (no sugary drinks, no fried foods, no fast food, no ultra-processed carbs, no candy/sweets between meals, no alcohol Mon\u2013Thu)" },
     ],
   },
 ];
@@ -97,8 +79,6 @@ export interface Client {
   tendencyType: TendencyType | "";
   lastWeighInDate: string; // YYYY-MM-DD
   weighIns: WeighIn[];
-  steps: number; // daily step count
-  finalSixNos: FinalSixNos;
   phaseChecklist: PhaseChecklist;
   status: "active" | "paused" | "completed";
   notes: string;

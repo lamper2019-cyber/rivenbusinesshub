@@ -2,8 +2,8 @@
 
 import { useState, useEffect, useCallback } from "react";
 import { useParams, useRouter } from "next/navigation";
-import type { Client, FinalSixNos, PhaseChecklist } from "@/lib/types";
-import { FINAL_SIX_NOS_LABELS as NOS_LABELS, PHASE_CHECKLIST_DATA, DEFAULT_PHASE_CHECKLIST } from "@/lib/types";
+import type { Client, PhaseChecklist } from "@/lib/types";
+import { PHASE_CHECKLIST_DATA, DEFAULT_PHASE_CHECKLIST } from "@/lib/types";
 import { getClient, putClient, deleteClient } from "@/lib/db";
 import { getCoachInsight, formatWeighInDate } from "@/lib/tips";
 
@@ -269,112 +269,6 @@ export default function ClientProfilePage() {
           </div>
         </div>
       )}
-
-      {/* Steps Tracker */}
-      <div className="bg-riven-card rounded-2xl p-5 mb-6">
-        <h3 className="font-headline font-semibold text-white text-sm mb-4 flex items-center gap-2">
-          <span className="material-symbols-outlined text-riven-gold text-lg">directions_walk</span>
-          Daily Steps
-        </h3>
-        <div className="flex items-center gap-4">
-          <input
-            type="number"
-            value={client.steps || ""}
-            onChange={async (e) => {
-              const steps = Number(e.target.value) || 0;
-              const updated = { ...client, steps };
-              await putClient(updated);
-              setClient(updated);
-              setForm(updated);
-            }}
-            placeholder="0"
-            className="w-32 bg-riven-bg rounded-xl px-4 py-3 text-2xl font-headline font-bold text-white text-center placeholder-riven-muted/40 focus:ring-1 focus:ring-riven-gold outline-none"
-          />
-          <span className="text-sm text-riven-muted">steps today</span>
-        </div>
-        {client.steps > 0 && (
-          <div className="mt-3">
-            <div className="flex justify-between text-xs text-riven-muted mb-1">
-              <span>Progress to 10,000</span>
-              <span className="text-riven-gold font-semibold">
-                {Math.min(100, Math.round((client.steps / 10000) * 100))}%
-              </span>
-            </div>
-            <div className="w-full h-2 bg-riven-bg rounded-full overflow-hidden">
-              <div
-                className="h-full rounded-full gold-gradient transition-all duration-500"
-                style={{ width: `${Math.min(100, (client.steps / 10000) * 100)}%` }}
-              />
-            </div>
-          </div>
-        )}
-      </div>
-
-      {/* The Final 6 NOs */}
-      <div className="bg-riven-card rounded-2xl p-5 mb-6">
-        <h3 className="font-headline font-semibold text-white text-sm mb-4 flex items-center gap-2">
-          <span className="material-symbols-outlined text-riven-gold text-lg">block</span>
-          The Final 6 NOs
-        </h3>
-        <div className="space-y-2">
-          {(Object.keys(NOS_LABELS) as Array<keyof FinalSixNos>).map((key) => {
-            const checked = client.finalSixNos?.[key] ?? false;
-            return (
-              <label
-                key={key}
-                className={`flex items-start gap-3 p-3 rounded-xl cursor-pointer transition-all ${
-                  checked
-                    ? "bg-green-500/10"
-                    : "bg-riven-bg hover:bg-riven-surface"
-                }`}
-              >
-                <input
-                  type="checkbox"
-                  checked={checked}
-                  onChange={async () => {
-                    const updatedNos = {
-                      ...(client.finalSixNos || {
-                        noSugaryDrinks: false,
-                        noFriedFoods: false,
-                        noFastFood: false,
-                        noProcessedCarbs: false,
-                        noCandyBetweenMeals: false,
-                        noAlcoholMonThu: false,
-                      }),
-                      [key]: !checked,
-                    };
-                    const updated = { ...client, finalSixNos: updatedNos };
-                    await putClient(updated);
-                    setClient(updated);
-                    setForm(updated);
-                  }}
-                  className="mt-0.5 w-5 h-5 rounded border-2 border-riven-border bg-transparent checked:bg-riven-gold checked:border-riven-gold text-black focus:ring-riven-gold focus:ring-offset-0 cursor-pointer flex-shrink-0"
-                />
-                <span
-                  className={`text-sm leading-snug ${
-                    checked ? "text-green-400 line-through" : "text-white"
-                  }`}
-                >
-                  {NOS_LABELS[key]}
-                </span>
-              </label>
-            );
-          })}
-        </div>
-        <div className="mt-3 flex items-center gap-2">
-          <span className="text-xs text-riven-muted">
-            {Object.values(client.finalSixNos || {}).filter(Boolean).length}/6 completed
-          </span>
-          <div className="flex-1 h-1.5 bg-riven-bg rounded-full overflow-hidden">
-            <div
-              className="h-full rounded-full gold-gradient transition-all duration-300"
-              style={{
-                width: `${(Object.values(client.finalSixNos || {}).filter(Boolean).length / 6) * 100}%`,
-              }}
-            />
-          </div>
-        </div>
-      </div>
 
       {/* Phase Roadmap */}
       <div className="bg-riven-card rounded-2xl p-5 mb-6">
