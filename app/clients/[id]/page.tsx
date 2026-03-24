@@ -543,9 +543,17 @@ export default function ClientProfilePage() {
             </div>
             <div>
               <p className="text-xs text-riven-muted">Last Weigh-in</p>
-              <p className="text-sm text-white">
-                {formatWeighInDate(client.lastWeighInDate)}
-              </p>
+              <input
+                type="date"
+                value={client.lastWeighInDate || ""}
+                onChange={async (e) => {
+                  const updated = { ...client, lastWeighInDate: e.target.value };
+                  await putClient(updated);
+                  setClient(updated);
+                  setForm(updated);
+                }}
+                className="w-full bg-riven-bg rounded-lg px-2 py-1.5 text-sm text-white focus:ring-1 focus:ring-riven-gold outline-none cursor-pointer"
+              />
             </div>
             <div>
               <p className="text-xs text-riven-muted">Tendency Type</p>
